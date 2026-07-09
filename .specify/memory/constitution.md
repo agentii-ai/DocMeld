@@ -73,11 +73,15 @@ Rationale: The #1 complaint about existing tools (MinerU, Marker, Docling) is he
 All parsed documents MUST produce a single, consistent JSON element structure:
 
 - Every element MUST contain `type` (string) and `page_no` (integer)
-- Supported element types: `title`, `text`, `table`, `image`
+- Supported element types: `title`, `text`, `table`, `image`, `chart`, `formula`, `header`, `footer`, `footnote`, `endnote`
 - `title` elements MUST include `level` (integer, 0-based) and `content` (string)
 - `text` elements MUST include `content` (string)
 - `table` elements MUST include `content` (markdown string) and `summary` (string)
 - `image` elements MUST include `image_name`, `content`, `image` (base64), `image_id`, and `bbox`
+- `chart` elements MUST include `chart_type`, `content` (markdown table), `image` (base64 fallback), and `image_name`
+- `formula` elements MUST include `content` (LaTeX string) and `formula_type`
+- `header` and `footer` elements MUST include `content` and `page_scope` (all/even/odd)
+- `footnote` and `endnote` elements MUST include `content` and `reference_id`
 - Element order in the list MUST reflect document reading order
 - The format MUST be documented with a JSON Schema and validated on output
 - New element types MAY be added in MINOR versions but existing types MUST NOT change shape in MINOR/PATCH versions

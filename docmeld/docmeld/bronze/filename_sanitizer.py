@@ -6,7 +6,6 @@ import re
 import unicodedata
 from pathlib import Path
 
-
 MAX_STEM_LENGTH = 200
 
 # Characters that are not safe in filenames: anything not alphanumeric or underscore

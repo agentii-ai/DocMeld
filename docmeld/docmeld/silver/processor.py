@@ -6,7 +6,7 @@ import logging
 import uuid as uuid_mod
 from pathlib import Path
 
-from docmeld.silver.markdown_renderer import render_page
+from docmeld.silver.markdown_renderer import new_counters, render_page
 from docmeld.silver.page_aggregator import group_by_page
 from docmeld.silver.page_models import SilverResult
 from docmeld.silver.title_tracker import TitleTracker
@@ -54,20 +54,38 @@ class SilverProcessor:
         pages = group_by_page(elements)
         sorted_page_nos = sorted(pages.keys())
 
-        # Source filename from JSON path
-        source = json_path.stem + ".pdf"
+        # Source filename from JSON path — detect actual extension
+        json_stem = json_path.stem
+        json_dir = json_path.parent
+        source = json_stem + ".pdf"  # default
+
+        # The stem format is {name}_{hash6}. Try without hash suffix first.
+        for ext in (".pdf", ".docx", ".doc"):
+            # 1. Try exact match (hashed file copied alongside)
+            candidate = json_dir.parent / (json_stem + ext)
+            if candidate.exists():
+                source = json_stem + ext
+                break
+            # 2. Try stripping hash suffix: {name}_{hash6} → {name}
+            parts = json_stem.rsplit("_", 1)
+            if len(parts) == 2 and len(parts[1]) == 6 and all(c in "0123456789abcdef" for c in parts[1]):
+                base_name = parts[0]
+                candidate = json_dir.parent / (base_name + ext)
+                if candidate.exists():
+                    source = base_name + ext
+                    break
 
         # Process pages
         title_tracker = TitleTracker()
-        table_counter = 0
+        counters = new_counters()
 
         with open(jsonl_path, "w", encoding="utf-8") as out:
             for page_no in sorted_page_nos:
                 page_elements = pages[page_no]
 
                 # Render page content
-                page_content, table_counter = render_page(
-                    page_elements, title_tracker, table_counter
+                page_content, counters = render_page(
+                    page_elements, title_tracker, counters
                 )
 
                 # Build metadata

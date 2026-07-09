@@ -19,9 +19,9 @@ def main(args: list[str] | None = None) -> int:
     p_all.add_argument("path", help="Path to PDF file or folder of PDFs")
     p_all.add_argument(
         "--backend",
-        choices=["pymupdf", "docling"],
-        default="pymupdf",
-        help="PDF parsing backend (default: pymupdf)",
+        choices=["pymupdf", "docling", "auto"],
+        default="auto",
+        help="Parsing backend (default: auto — detects format)",
     )
 
     # bronze
@@ -29,7 +29,7 @@ def main(args: list[str] | None = None) -> int:
     p_bronze.add_argument("path", help="Path to PDF file or folder of PDFs")
     p_bronze.add_argument(
         "--backend",
-        choices=["pymupdf", "docling"],
+        choices=["pymupdf", "docling", "auto"],
         default="pymupdf",
         help="PDF parsing backend (default: pymupdf)",
     )
@@ -47,7 +47,7 @@ def main(args: list[str] | None = None) -> int:
     p_cat.add_argument("path", help="Path to folder of PDFs")
     p_cat.add_argument(
         "--backend",
-        choices=["pymupdf", "docling"],
+        choices=["pymupdf", "docling", "auto"],
         default="pymupdf",
         help="PDF parsing backend (default: pymupdf)",
     )
@@ -62,7 +62,7 @@ def main(args: list[str] | None = None) -> int:
     p_prd.add_argument("path", help="Path to a single PDF file")
     p_prd.add_argument(
         "--backend",
-        choices=["pymupdf", "docling"],
+        choices=["pymupdf", "docling", "auto"],
         default="pymupdf",
         help="PDF parsing backend (default: pymupdf)",
     )
@@ -72,7 +72,7 @@ def main(args: list[str] | None = None) -> int:
     p_wf.add_argument("path", help="Path to a single PDF file")
     p_wf.add_argument(
         "--backend",
-        choices=["pymupdf", "docling"],
+        choices=["pymupdf", "docling", "auto"],
         default="pymupdf",
         help="PDF parsing backend (default: pymupdf)",
     )
@@ -82,7 +82,7 @@ def main(args: list[str] | None = None) -> int:
     p_sk.add_argument("path", help="Path to a single PDF file")
     p_sk.add_argument(
         "--backend",
-        choices=["pymupdf", "docling"],
+        choices=["pymupdf", "docling", "auto"],
         default="pymupdf",
         help="PDF parsing backend (default: pymupdf)",
     )
@@ -104,8 +104,8 @@ def main(args: list[str] | None = None) -> int:
     logger = setup_logging()
 
     try:
+        backend = getattr(parsed, "backend", "auto")
         if parsed.command == "process":
-            backend = getattr(parsed, "backend", "pymupdf")
             doc = DocMeldParser(path, backend=backend)
             result = doc.process_all()
             print(f"Done: {result.successful}/{result.total_files} files processed")
@@ -116,7 +116,6 @@ def main(args: list[str] | None = None) -> int:
             print(f"Time: {result.processing_time_seconds}s")
 
         elif parsed.command == "bronze":
-            backend = getattr(parsed, "backend", "pymupdf")
             doc = DocMeldParser(path, backend=backend)
             result = doc.process_bronze()
             if hasattr(result, "element_count"):
@@ -141,7 +140,6 @@ def main(args: list[str] | None = None) -> int:
             if not Path(path).is_dir():
                 print(f"Error: categorize requires a folder path, got: {path}", file=sys.stderr)
                 return 1
-            backend = getattr(parsed, "backend", "pymupdf")
             reorganize = getattr(parsed, "reorganize", False)
             doc = DocMeldParser(path, backend=backend)
             result = doc.process_categorize(reorganize=reorganize)
@@ -157,7 +155,6 @@ def main(args: list[str] | None = None) -> int:
             if Path(path).is_dir():
                 print(f"Error: prd requires a single PDF file, got folder: {path}", file=sys.stderr)
                 return 1
-            backend = getattr(parsed, "backend", "pymupdf")
             doc = DocMeldParser(path, backend=backend)
             result = doc.process_prd()
             if result.skipped:
@@ -170,7 +167,6 @@ def main(args: list[str] | None = None) -> int:
             if Path(path).is_dir():
                 print(f"Error: workflow requires a single PDF file, got folder: {path}", file=sys.stderr)
                 return 1
-            backend = getattr(parsed, "backend", "pymupdf")
             doc = DocMeldParser(path, backend=backend)
             result = doc.process_workflow()
             if result.skipped:
@@ -183,7 +179,6 @@ def main(args: list[str] | None = None) -> int:
             if Path(path).is_dir():
                 print(f"Error: skills requires a single PDF file, got folder: {path}", file=sys.stderr)
                 return 1
-            backend = getattr(parsed, "backend", "pymupdf")
             doc = DocMeldParser(path, backend=backend)
             result = doc.process_skills()
             if result.skipped:

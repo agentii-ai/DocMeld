@@ -19,21 +19,36 @@ def _count_data_rows(table_content: str) -> int:
     return data_rows
 
 
+# Extended counter type for all element counters
+PageCounters = Dict[str, int]
+
+
+def new_counters() -> PageCounters:
+    """Create a new counters dict for element numbering."""
+    return {"table": 0, "chart": 0, "formula": 0}
+
+
 def render_page(
     elements: List[Dict[str, Any]],
     title_tracker: TitleTracker,
-    table_counter: int,
-) -> Tuple[str, int]:
+    counters: PageCounters | None = None,
+) -> Tuple[str, PageCounters]:
     """Render a list of elements into markdown page content.
+
+    Supports 10 element types: title, text, table, image, chart,
+    formula, header, footer, footnote, endnote.
 
     Args:
         elements: List of element dicts for this page.
         title_tracker: TitleTracker instance (mutated with new titles).
-        table_counter: Current global table counter.
+        counters: Dict with table, chart, formula counters (mutated).
 
     Returns:
-        Tuple of (page_content_string, updated_table_counter).
+        Tuple of (page_content_string, updated_counters).
     """
+    if counters is None:
+        counters = new_counters()
+
     parts: List[str] = []
 
     for elem in elements:
@@ -54,10 +69,10 @@ def render_page(
             data_rows = _count_data_rows(table_content)
 
             if data_rows > 1:
-                table_counter += 1
-                parts.append(f"[[Table{table_counter}]]")
+                counters["table"] += 1
+                parts.append(f"[[Table{counters['table']}]]")
                 parts.append(table_content)
-                parts.append(f"[/Table{table_counter}]")
+                parts.append(f"[/Table{counters['table']}]")
             else:
                 parts.append("[[Table]]")
                 parts.append(table_content)
@@ -67,5 +82,38 @@ def render_page(
             image_name = elem.get("image_name", "image")
             parts.append(f"![{image_name}]")
 
+        elif elem_type == "chart":
+            chart_content = elem["content"]
+            chart_type = elem.get("chart_type", "unknown")
+            counters["chart"] += 1
+            n = counters["chart"]
+            parts.append(f"[[Chart{n} type={chart_type}]]")
+            if chart_content.strip():
+                parts.append(chart_content)
+            parts.append(f"[/Chart{n}]")
+
+        elif elem_type == "formula":
+            formula_content = elem["content"]
+            formula_type = elem.get("formula_type", "LaTeX")
+            counters["formula"] += 1
+            n = counters["formula"]
+            parts.append(f"[[Formula{n} type={formula_type}]]")
+            parts.append(formula_content)
+            parts.append(f"[/Formula{n}]")
+
+        elif elem_type == "header":
+            content = elem["content"]
+            scope = elem.get("page_scope", "all")
+            parts.append(f"[Header scope={scope}] {content} [/Header]")
+
+        elif elem_type == "footer":
+            content = elem["content"]
+            scope = elem.get("page_scope", "all")
+            parts.append(f"[Footer scope={scope}] {content} [/Footer]")
+
+        elif elem_type == "footnote" or elem_type == "endnote":
+            ref = elem.get("reference_id", "N")
+            parts.append(f"[^{ref}]: {elem['content']}")
+
     page_content = "\n\n".join(parts)
-    return page_content, table_counter
+    return page_content, counters

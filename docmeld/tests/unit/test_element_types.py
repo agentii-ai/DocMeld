@@ -202,3 +202,292 @@ class TestParseElement:
 
         with pytest.raises(ValueError, match="Unknown element type"):
             parse_element({"type": "unknown", "page_no": 1})
+
+
+class TestChartElement:
+    def test_valid_chart(self) -> None:
+        from docmeld.bronze.element_types import ChartElement
+
+        elem = ChartElement(
+            type="chart",
+            chart_type="bar",
+            content="| Q | R |\n|---|---|\n| Q1 | 100 |",
+            image="iVBORw0KGgo=",
+            image_name="chart_001.png",
+            page_no=2,
+        )
+        assert elem.type == "chart"
+        assert elem.chart_type == "bar"
+        assert elem.content == "| Q | R |\n|---|---|\n| Q1 | 100 |"
+        assert elem.image == "iVBORw0KGgo="
+
+    def test_chart_default_element_id_and_parent_id(self) -> None:
+        from docmeld.bronze.element_types import ChartElement
+
+        elem = ChartElement(
+            type="chart", chart_type="pie", content="| A |\n|---|\n| 1 |",
+            image="aGVsbG8=", image_name="chart.png", page_no=1,
+        )
+        assert elem.element_id == ""
+        assert elem.parent_id == ""
+
+    def test_chart_type_unknown_allowed(self) -> None:
+        from docmeld.bronze.element_types import ChartElement
+
+        elem = ChartElement(
+            type="chart", chart_type="unknown", content="| A |\n|---|\n| 1 |",
+            image="aGVsbG8=", image_name="chart.png", page_no=1,
+        )
+        assert elem.chart_type == "unknown"
+
+    def test_chart_empty_content_rejected(self) -> None:
+        from docmeld.bronze.element_types import ChartElement
+
+        with pytest.raises(ValidationError):
+            ChartElement(
+                type="chart", chart_type="bar", content="",
+                image="aGVsbG8=", image_name="chart.png", page_no=1,
+            )
+
+    def test_chart_page_no_zero_rejected(self) -> None:
+        from docmeld.bronze.element_types import ChartElement
+
+        with pytest.raises(ValidationError):
+            ChartElement(
+                type="chart", chart_type="bar", content="| A |\n|---|\n| 1 |",
+                image="aGVsbG8=", image_name="chart.png", page_no=0,
+            )
+
+
+class TestFormulaElement:
+    def test_valid_formula_mathtype(self) -> None:
+        from docmeld.bronze.element_types import FormulaElement
+
+        elem = FormulaElement(
+            type="formula", content="E = mc^2", formula_type="MathType", page_no=3,
+        )
+        assert elem.type == "formula"
+        assert elem.content == "E = mc^2"
+        assert elem.formula_type == "MathType"
+
+    def test_valid_formula_omml(self) -> None:
+        from docmeld.bronze.element_types import FormulaElement
+
+        elem = FormulaElement(
+            type="formula", content="\\frac{a}{b}", formula_type="OMML", page_no=1,
+        )
+        assert elem.formula_type == "OMML"
+
+    def test_valid_formula_latex(self) -> None:
+        from docmeld.bronze.element_types import FormulaElement
+
+        elem = FormulaElement(
+            type="formula", content="\\sum_{i=1}^{n} x_i", formula_type="LaTeX", page_no=1,
+        )
+        assert elem.formula_type == "LaTeX"
+
+    def test_formula_default_element_id_and_parent_id(self) -> None:
+        from docmeld.bronze.element_types import FormulaElement
+
+        elem = FormulaElement(
+            type="formula", content="x = y", formula_type="LaTeX", page_no=1,
+        )
+        assert elem.element_id == ""
+        assert elem.parent_id == ""
+
+    def test_formula_empty_content_rejected(self) -> None:
+        from docmeld.bronze.element_types import FormulaElement
+
+        with pytest.raises(ValidationError):
+            FormulaElement(
+                type="formula", content="", formula_type="LaTeX", page_no=1,
+            )
+
+    def test_formula_page_no_zero_rejected(self) -> None:
+        from docmeld.bronze.element_types import FormulaElement
+
+        with pytest.raises(ValidationError):
+            FormulaElement(
+                type="formula", content="x = y", formula_type="LaTeX", page_no=0,
+            )
+
+
+class TestHeaderElement:
+    def test_valid_header(self) -> None:
+        from docmeld.bronze.element_types import HeaderElement
+
+        elem = HeaderElement(
+            type="header", content="Chapter 3", page_scope="all", page_no=5,
+        )
+        assert elem.type == "header"
+        assert elem.content == "Chapter 3"
+        assert elem.page_scope == "all"
+
+    def test_header_page_scope_even(self) -> None:
+        from docmeld.bronze.element_types import HeaderElement
+
+        elem = HeaderElement(
+            type="header", content="Even header", page_scope="even", page_no=2,
+        )
+        assert elem.page_scope == "even"
+
+    def test_header_page_scope_odd(self) -> None:
+        from docmeld.bronze.element_types import HeaderElement
+
+        elem = HeaderElement(
+            type="header", content="Odd header", page_scope="odd", page_no=3,
+        )
+        assert elem.page_scope == "odd"
+
+    def test_header_default_element_id_and_parent_id(self) -> None:
+        from docmeld.bronze.element_types import HeaderElement
+
+        elem = HeaderElement(
+            type="header", content="Header", page_scope="all", page_no=1,
+        )
+        assert elem.element_id == ""
+        assert elem.parent_id == ""
+
+    def test_header_empty_content_rejected(self) -> None:
+        from docmeld.bronze.element_types import HeaderElement
+
+        with pytest.raises(ValidationError):
+            HeaderElement(
+                type="header", content="", page_scope="all", page_no=1,
+            )
+
+
+class TestFooterElement:
+    def test_valid_footer(self) -> None:
+        from docmeld.bronze.element_types import FooterElement
+
+        elem = FooterElement(
+            type="footer", content="Page 1", page_scope="all", page_no=1,
+        )
+        assert elem.type == "footer"
+        assert elem.content == "Page 1"
+
+    def test_footer_empty_content_rejected(self) -> None:
+        from docmeld.bronze.element_types import FooterElement
+
+        with pytest.raises(ValidationError):
+            FooterElement(
+                type="footer", content="", page_scope="all", page_no=1,
+            )
+
+
+class TestFootnoteElement:
+    def test_valid_footnote(self) -> None:
+        from docmeld.bronze.element_types import FootnoteElement
+
+        elem = FootnoteElement(
+            type="footnote", content="Source: Annual Report", reference_id="1", page_no=7,
+        )
+        assert elem.type == "footnote"
+        assert elem.content == "Source: Annual Report"
+        assert elem.reference_id == "1"
+
+    def test_footnote_default_element_id_and_parent_id(self) -> None:
+        from docmeld.bronze.element_types import FootnoteElement
+
+        elem = FootnoteElement(
+            type="footnote", content="Note text", reference_id="*", page_no=1,
+        )
+        assert elem.element_id == ""
+        assert elem.parent_id == ""
+
+    def test_footnote_empty_content_rejected(self) -> None:
+        from docmeld.bronze.element_types import FootnoteElement
+
+        with pytest.raises(ValidationError):
+            FootnoteElement(
+                type="footnote", content="", reference_id="1", page_no=1,
+            )
+
+
+class TestEndnoteElement:
+    def test_valid_endnote(self) -> None:
+        from docmeld.bronze.element_types import EndnoteElement
+
+        elem = EndnoteElement(
+            type="endnote", content="See Appendix A", reference_id="i", page_no=20,
+        )
+        assert elem.type == "endnote"
+        assert elem.content == "See Appendix A"
+        assert elem.reference_id == "i"
+
+    def test_endnote_empty_content_rejected(self) -> None:
+        from docmeld.bronze.element_types import EndnoteElement
+
+        with pytest.raises(ValidationError):
+            EndnoteElement(
+                type="endnote", content="", reference_id="1", page_no=1,
+            )
+
+
+class TestParseElement:
+    def test_parse_title_dict(self) -> None:
+        from docmeld.bronze.element_types import parse_element
+
+        data = {"type": "title", "level": 1, "content": "Section", "page_no": 2}
+        elem = parse_element(data)
+        assert elem.type == "title"
+
+    def test_parse_text_dict(self) -> None:
+        from docmeld.bronze.element_types import parse_element
+
+        data = {"type": "text", "content": "Hello", "page_no": 1}
+        elem = parse_element(data)
+        assert elem.type == "text"
+
+    def test_parse_chart_dict(self) -> None:
+        from docmeld.bronze.element_types import parse_element
+
+        data = {
+            "type": "chart", "chart_type": "bar",
+            "content": "| Q | R |\n|---|---|\n| Q1 | 100 |",
+            "image": "aGVsbG8=", "image_name": "chart.png", "page_no": 2,
+        }
+        elem = parse_element(data)
+        assert elem.type == "chart"
+
+    def test_parse_formula_dict(self) -> None:
+        from docmeld.bronze.element_types import parse_element
+
+        data = {"type": "formula", "content": "E = mc^2", "formula_type": "MathType", "page_no": 1}
+        elem = parse_element(data)
+        assert elem.type == "formula"
+
+    def test_parse_header_dict(self) -> None:
+        from docmeld.bronze.element_types import parse_element
+
+        data = {"type": "header", "content": "Header text", "page_scope": "all", "page_no": 1}
+        elem = parse_element(data)
+        assert elem.type == "header"
+
+    def test_parse_footer_dict(self) -> None:
+        from docmeld.bronze.element_types import parse_element
+
+        data = {"type": "footer", "content": "Footer text", "page_scope": "all", "page_no": 1}
+        elem = parse_element(data)
+        assert elem.type == "footer"
+
+    def test_parse_footnote_dict(self) -> None:
+        from docmeld.bronze.element_types import parse_element
+
+        data = {"type": "footnote", "content": "Note", "reference_id": "1", "page_no": 1}
+        elem = parse_element(data)
+        assert elem.type == "footnote"
+
+    def test_parse_endnote_dict(self) -> None:
+        from docmeld.bronze.element_types import parse_element
+
+        data = {"type": "endnote", "content": "Note", "reference_id": "1", "page_no": 1}
+        elem = parse_element(data)
+        assert elem.type == "endnote"
+
+    def test_parse_unknown_type_raises(self) -> None:
+        from docmeld.bronze.element_types import parse_element
+
+        with pytest.raises(ValueError, match="Unknown element type"):
+            parse_element({"type": "unknown", "page_no": 1})

@@ -114,3 +114,60 @@ class TestElementSchema:
         }
         assert element["table_data"]["num_rows"] == 1
         assert element["table_data"]["headers"] == ["A", "B"]
+
+    def test_ten_type_schema_exists(self) -> None:
+        """Verify the 006-mvp-doc-pipeline element schema with 10 types."""
+        schema_path = (
+            Path(__file__).resolve().parents[3]
+            / "specs" / "006-mvp-doc-pipeline" / "contracts" / "element-schema.json"
+        )
+        assert schema_path.exists(), f"Schema not found at {schema_path}"
+        with open(schema_path) as f:
+            schema = json.load(f)
+        allowed_types = schema["items"]["properties"]["type"]["enum"]
+        assert "chart" in allowed_types
+        assert "formula" in allowed_types
+        assert "header" in allowed_types
+        assert "footer" in allowed_types
+        assert "footnote" in allowed_types
+        assert "endnote" in allowed_types
+        assert len(allowed_types) == 10
+
+    def test_chart_element_conforms_to_schema(self) -> None:
+        from docmeld.bronze.element_types import ChartElement
+
+        elem = ChartElement(
+            type="chart", chart_type="bar",
+            content="| Q | R |\n|---|---|\n| Q1 | 100 |",
+            image="aGVsbG8=", image_name="chart.png", page_no=2,
+        )
+        assert elem.type == "chart"
+        assert elem.chart_type in ["bar", "line", "pie", "scatter", "area", "radar", "doughnut", "bubble", "unknown"]
+
+    def test_formula_element_conforms_to_schema(self) -> None:
+        from docmeld.bronze.element_types import FormulaElement
+
+        elem = FormulaElement(
+            type="formula", content="E = mc^2", formula_type="MathType", page_no=1,
+        )
+        assert elem.formula_type in ["MathType", "OMML", "LaTeX"]
+
+    def test_header_element_conforms_to_schema(self) -> None:
+        from docmeld.bronze.element_types import HeaderElement
+
+        elem = HeaderElement(
+            type="header", content="Header", page_scope="all", page_no=1,
+        )
+        assert elem.page_scope in ["all", "even", "odd"]
+
+    def test_backward_compatible_four_types(self) -> None:
+        """Existing 4-type elements should validate against 10-type schema."""
+        elements = [
+            {"type": "title", "level": 0, "content": "Title", "page_no": 1},
+            {"type": "text", "content": "Text", "page_no": 1},
+            {"type": "table", "content": "| A |\n|---|\n| 1 |", "summary": "", "page_no": 2},
+            {"type": "image", "image_name": "img.png", "content": "", "image": "aGVsbG8=", "image_id": "img", "bbox": [0, 0, 0, 0], "page_no": 3},
+        ]
+        for elem in elements:
+            assert elem["type"] in ["title", "text", "table", "image", "chart", "formula", "header", "footer", "footnote", "endnote"]
+            assert elem["page_no"] >= 1

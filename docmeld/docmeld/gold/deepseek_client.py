@@ -138,6 +138,7 @@ class DeepSeekClient:
             "model": "deepseek-chat",
             "temperature": 1.0,  # Deterministic for categorization
             "api_key": self.api_key,
+            "max_tokens": 8192,
         }
         if self.endpoint:
             kwargs["base_url"] = self.endpoint

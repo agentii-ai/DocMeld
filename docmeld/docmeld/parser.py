@@ -2,13 +2,18 @@
 from __future__ import annotations
 
 import logging
-import os
 import time
 from pathlib import Path
 from typing import Optional
 
 from docmeld.bronze.processor import BronzeProcessor
-from docmeld.silver.page_models import BronzeResult, CategorizeResult, GoldResult, ProcessingResult, SilverResult
+from docmeld.silver.page_models import (
+    BronzeResult,
+    CategorizeResult,
+    GoldResult,
+    ProcessingResult,
+    SilverResult,
+)
 from docmeld.silver.processor import SilverProcessor
 
 logger = logging.getLogger("docmeld")
@@ -81,27 +86,26 @@ class DocMeldParser:
             elapsed = time.time() - start_time
             folder_result.processing_time_seconds = round(elapsed, 2)
             return folder_result
-        else:
-            bronze_result = bronze_processor.process_file(self.path, backend=self.backend)
-            silver_result = silver_processor.process(bronze_result.output_path)
+        bronze_result = bronze_processor.process_file(self.path, backend=self.backend)
+        silver_result = silver_processor.process(bronze_result.output_path)
 
-            gold_failed = False
-            try:
-                self.process_gold(silver_result.output_path)
-            except Exception as e:
-                logger.warning(f"Gold stage skipped: {e}")
-                gold_failed = True
+        gold_failed = False
+        try:
+            self.process_gold(silver_result.output_path)
+        except Exception as e:
+            logger.warning(f"Gold stage skipped: {e}")
+            gold_failed = True
 
-            elapsed = time.time() - start_time
-            return ProcessingResult(
-                total_files=1,
-                successful=1,
-                failed=0,
-                failures=[],
-                processing_time_seconds=round(elapsed, 2),
-                output_directory=bronze_result.output_dir,
-                log_file="",
-            )
+        elapsed = time.time() - start_time
+        return ProcessingResult(
+            total_files=1,
+            successful=1,
+            failed=0,
+            failures=[],
+            processing_time_seconds=round(elapsed, 2),
+            output_directory=bronze_result.output_dir,
+            log_file="",
+        )
 
     def process_categorize(self, reorganize: bool = False) -> CategorizeResult:
         """Run bronze→silver + categorization on a folder of PDFs.
@@ -202,7 +206,7 @@ class DocMeldParser:
             reorganized=reorganize,
         )
 
-    def process_prd(self) -> "PrdResult":
+    def process_prd(self) -> PrdResult:
         """Generate a PRD from a single PDF research paper.
 
         Processes the PDF through bronze→silver, then sends aggregated
@@ -215,7 +219,6 @@ class DocMeldParser:
             raise ValueError("process_prd() requires a single PDF file, not a folder")
 
         from docmeld.prd.generator import generate_prd
-        from docmeld.prd.models import PrdResult
 
         # Step 1: Bronze
         bronze_result = self.process_bronze()
@@ -241,7 +244,7 @@ class DocMeldParser:
             source_pdf=Path(self.path).name,
         )
 
-    def process_workflow(self) -> "WorkflowResult":
+    def process_workflow(self) -> WorkflowResult:
         """Generate a workflow from a single PDF research paper.
 
         Processes the PDF through bronze→silver, then sends aggregated
@@ -254,7 +257,6 @@ class DocMeldParser:
             raise ValueError("process_workflow() requires a single PDF file, not a folder")
 
         from docmeld.workflow.generator import generate_workflow
-        from docmeld.workflow.models import WorkflowResult
 
         # Step 1: Bronze
         bronze_result = self.process_bronze()
@@ -280,7 +282,7 @@ class DocMeldParser:
             source_pdf=Path(self.path).name,
         )
 
-    def process_skills(self) -> "SkillsResult":
+    def process_skills(self) -> SkillsResult:
         """Extract Claude Code skills from a single PDF book.
 
         Processes the PDF through bronze→silver, then sends aggregated
@@ -293,7 +295,6 @@ class DocMeldParser:
             raise ValueError("process_skills() requires a single PDF file, not a folder")
 
         from docmeld.skills.generator import generate_skills
-        from docmeld.skills.models import SkillsResult
 
         # Step 1: Bronze
         bronze_result = self.process_bronze()

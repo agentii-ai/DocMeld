@@ -1,38 +1,65 @@
-"""Docling backend for PDF element extraction."""
+"""Docling backend for document element extraction (PDF, DOCX, PPTX)."""
 from __future__ import annotations
 
 import base64
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any
 
 
 class DoclingBackend:
-    """Extract elements using Docling's DocumentConverter."""
+    """Extract elements using Docling's DocumentConverter + python-docx for OOXML.
 
-    def extract_elements(self, pdf_path: str, output_dir: str) -> List[Dict[str, Any]]:
-        """Extract all elements from a PDF file using Docling.
+    Docling handles body content (text, tables, titles, images, lists).
+    python-docx handles header/footer/footnote text + page break detection
+    from the OOXML ZIP structure.
+    """
 
-        Maps Docling document items to DocMeld element format.
+    def extract_elements(self, doc_path: str, output_dir: str) -> list[dict[str, Any]]:
+        """Extract all elements from a document.
+
+        Args:
+            doc_path: Path to the document file (.pdf, .docx).
+            output_dir: Directory for auxiliary outputs.
+
+        Returns:
+            List of element dicts in DocMeld format.
         """
         try:
             from docling.document_converter import DocumentConverter
         except ImportError as e:
-            raise ImportError(
-                "Docling is not installed. Install with: pip install docmeld[docling]"
-            ) from e
+            _msg = "Docling is not installed. Install with: pip install docmeld[docling]"
+            raise ImportError(_msg) from e
 
         converter = DocumentConverter()
-        result = converter.convert(pdf_path)
+        result = converter.convert(doc_path)
         doc = result.document
 
-        elements: List[Dict[str, Any]] = []
+        elements: list[dict[str, Any]] = []
+        page_breaks: set[int] = set()
+        is_docx = Path(doc_path).suffix.lower() == ".docx"
+
+        # Extract headers/footers from OOXML for .docx
+        hf_elements: list[dict[str, Any]] = []
+        if is_docx:
+            hf_elements = self._extract_ooxml_headers_footers(doc_path)
+            page_breaks = self._detect_ooxml_page_breaks(doc_path)
+
+        # Assign page numbers based on page break positions
+        current_page = 1
+        body_item_index = 0
 
         for item, _level in doc.iterate_items():
             item_type = type(item).__name__
-            page_no = self._get_page_no(item)
+            body_item_index += 1
 
-            if item_type == "SectionHeaderItem":
+            # Check if we've crossed a page break
+            if page_breaks and body_item_index in page_breaks:
+                current_page += 1
+
+            page_no = self._get_page_no(item) or current_page
+
+            if item_type in ("SectionHeaderItem", "TitleItem"):
                 level = getattr(item, "level", 1)
-                # Docling levels are 1-based, DocMeld uses 0-based
                 elements.append({
                     "type": "title",
                     "level": max(0, level - 1),
@@ -57,7 +84,7 @@ class DoclingBackend:
                     })
 
             elif item_type == "TableItem":
-                md_content = self._table_to_markdown(item)
+                md_content = self._table_to_markdown(item, doc)
                 table_data = self._table_to_structured(item)
                 elements.append({
                     "type": "table",
@@ -72,7 +99,84 @@ class DoclingBackend:
                 if image_data:
                     elements.append(image_data)
 
+        # Merge header/footer elements at the start
+        return hf_elements + elements
+
+    # ── python-docx OOXML helpers ──────────────────────────────
+
+    @staticmethod
+    def _extract_ooxml_headers_footers(doc_path: str) -> list[dict[str, Any]]:
+        """Extract headers and footers from .docx using python-docx."""
+        elements: list[dict[str, Any]] = []
+        try:
+            from docx import Document as DocxDocument
+            docx = DocxDocument(doc_path)
+
+            for section_idx, section in enumerate(docx.sections):
+                # Header
+                header = section.header
+                if header and not header.is_linked_to_previous:
+                    text_parts = []
+                    for para in header.paragraphs:
+                        if para.text.strip():
+                            text_parts.append(para.text.strip())
+                    if text_parts:
+                        elements.append({
+                            "type": "header",
+                            "content": " | ".join(text_parts),
+                            "page_scope": "all",
+                            "page_no": section_idx + 1,
+                        })
+
+                # Footer
+                footer = section.footer
+                if footer and not footer.is_linked_to_previous:
+                    text_parts = []
+                    for para in footer.paragraphs:
+                        if para.text.strip():
+                            text_parts.append(para.text.strip())
+                    if text_parts:
+                        elements.append({
+                            "type": "footer",
+                            "content": " | ".join(text_parts),
+                            "page_scope": "all",
+                            "page_no": section_idx + 1,
+                        })
+        except Exception:
+            pass
         return elements
+
+    @staticmethod
+    def _detect_ooxml_page_breaks(doc_path: str) -> set[int]:
+        """Detect page break positions in .docx body paragraphs.
+
+        Returns set of paragraph indices (1-based) where page breaks occur.
+        This approximates page boundaries — actual page layout depends on
+        printer settings and is not stored in OOXML.
+        """
+        breaks: set[int] = set()
+        try:
+            from docx import Document as DocxDocument
+            from docx.oxml.ns import qn
+
+            docx = DocxDocument(doc_path)
+            para_idx = 0
+            for para in docx.paragraphs:
+                para_idx += 1
+                # Check for explicit page break before paragraph
+                for run in para.runs:
+                    br_elems = run._r.findall(qn("w:br"))
+                    for br in br_elems:
+                        if br.get(qn("w:type")) == "page":
+                            breaks.add(para_idx)
+                    # Also check lastRenderedPageBreak
+                    for br in run._r.findall(qn("w:lastRenderedPageBreak")):
+                        breaks.add(para_idx)
+        except Exception:
+            pass
+        return breaks
+
+    # ── Docling item helpers ────────────────────────────────────
 
     @staticmethod
     def _get_page_no(item: Any) -> int:
@@ -85,11 +189,20 @@ class DoclingBackend:
         return 1
 
     @staticmethod
-    def _table_to_markdown(item: Any) -> str:
+    def _table_to_markdown(item: Any, doc: Any = None) -> str:
         """Convert a Docling TableItem to markdown string."""
+        # Try export_to_markdown with doc argument (required since v2)
         export_fn = getattr(item, "export_to_markdown", None)
         if export_fn:
-            return export_fn()
+            try:
+                if doc is not None:
+                    return export_fn(doc=doc)
+            except TypeError:
+                pass
+            try:
+                return export_fn()
+            except Exception:
+                pass
 
         # Fallback: build from grid data
         data = getattr(item, "data", None)
@@ -110,7 +223,7 @@ class DoclingBackend:
         return "\n".join(lines)
 
     @staticmethod
-    def _table_to_structured(item: Any) -> Dict[str, Any]:
+    def _table_to_structured(item: Any) -> dict[str, Any]:
         """Extract structured table data from a Docling TableItem."""
         data = getattr(item, "data", None)
         if not data:
@@ -133,7 +246,7 @@ class DoclingBackend:
     @staticmethod
     def _extract_picture(
         item: Any, output_dir: str, page_no: int
-    ) -> Dict[str, Any] | None:
+    ) -> dict[str, Any] | None:
         """Extract image data from a Docling PictureItem."""
         image = getattr(item, "image", None)
         if not image:

@@ -5,6 +5,24 @@ All notable changes to DocMeld will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-07-09
+
+### Added
+- DOC/DOCX pipeline: Process Word documents alongside PDFs (bronze → silver → gold)
+- 6 new element types: chart, formula, header, footer, footnote, endnote (10 total)
+- SofficeBackend: LibreOffice bridge for legacy .doc file processing
+- `--backend auto` CLI flag: automatic format detection (.doc → soffice, .docx → docling, .pdf → pymupdf)
+- Chart data extraction with image fallback, MathType/OMML → LaTeX formula extraction
+- Header/footer, footnote/endnote detection in .docx documents
+- Format filtering: .docm/.dotx/.dot/.rtf skipped with warning
+- `[Header]`/`[Footer]`/`[^N]` marker syntax in silver JSONL output
+
+### Changed
+- Element type system expanded from 4 to 10 types (backward compatible)
+- BronzeProcessor and DocMeldParser generalized from PDF-only to multi-format
+- SilverProcessor source filename now dynamically detects .pdf/.doc/.docx extension
+- Constitution Principle IV amended: 4 → 10 supported element types
+
 ## [Unreleased]
 
 ### Added

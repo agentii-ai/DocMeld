@@ -14,11 +14,44 @@ logger = logging.getLogger("docmeld")
 MAX_CONTENT_CHARS = 30000
 
 
+def generate_article_md(silver_path: Path) -> Path | None:
+    """Read silver JSONL and write full page_content as a markdown article.
+
+    Args:
+        silver_path: Path to a silver JSONL file.
+
+    Returns:
+        Path to the generated .md file, or None if no content.
+    """
+    pages: List[Dict[str, Any]] = []
+    with open(silver_path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                pages.append(json.loads(line))
+
+    if not pages:
+        return None
+
+    content_parts = [p.get("page_content", "") for p in pages if p.get("page_content")]
+    if not content_parts:
+        return None
+
+    md_content = "\n\n---\n\n".join(content_parts)
+    md_path = silver_path.with_name(silver_path.stem + "_article.md")
+    if not md_path.exists():
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(md_content)
+        logger.debug(f"Generated article: {md_path.name}")
+    return md_path
+
+
 def aggregate_paper_metadata(folder_path: str) -> List[PaperMetadata]:
     """Scan a folder for silver JSONL files and collect per-paper content.
 
     Looks for *.jsonl files (excluding *_gold.jsonl) in subdirectories.
     Concatenates page_content from each page up to MAX_CONTENT_CHARS.
+    Also generates a full markdown article for each paper.
 
     Args:
         folder_path: Path to the folder containing paper output directories.
@@ -36,6 +69,7 @@ def aggregate_paper_metadata(folder_path: str) -> List[PaperMetadata]:
 
     for silver_path in silver_files:
         try:
+            generate_article_md(silver_path)
             metadata = _parse_silver_file(silver_path)
             if metadata:
                 results.append(metadata)

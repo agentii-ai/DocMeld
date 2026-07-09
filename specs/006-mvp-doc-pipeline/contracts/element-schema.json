@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docmeld.github.io/schemas/element-schema.json",
+  "title": "DocMeld Bronze Element Schema (v2 — 10 element types)",
+  "description": "JSON Schema for DocMeld bronze-stage document elements. Covers all 10 element types: text, table, title, image, chart, formula, header, footer, footnote, endnote.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["type", "page_no"],
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "text", "table", "title", "image",
+          "chart", "formula",
+          "header", "footer",
+          "footnote", "endnote"
+        ]
+      },
+      "page_no": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "element_id": {
+        "type": "string",
+        "pattern": "^e_\\d{3}$"
+      },
+      "parent_id": {
+        "type": "string"
+      }
+    },
+    "allOf": [
+      {
+        "if": { "properties": { "type": { "const": "title" } } },
+        "then": {
+          "required": ["level", "content"],
+          "properties": {
+            "level": { "type": "integer", "minimum": 0, "maximum": 5 },
+            "content": { "type": "string", "minLength": 1 }
+          }
+        }
+      },
+      {
+        "if": { "properties": { "type": { "const": "text" } } },
+        "then": {
+          "required": ["content"],
+          "properties": {
+            "content": { "type": "string", "minLength": 1 }
+          }
+        }
+      },
+      {
+        "if": { "properties": { "type": { "const": "table" } } },
+        "then": {
+          "required": ["content", "summary"],
+          "properties": {
+            "content": { "type": "string", "minLength": 1 },
+            "summary": { "type": "string" },
+            "table_data": {
+              "type": "object",
+              "properties": {
+                "headers": { "type": "array", "items": { "type": "string" } },
+                "rows": { "type": "array", "items": { "type": "array", "items": { "type": "string" } } },
+                "num_rows": { "type": "integer", "minimum": 0 },
+                "num_cols": { "type": "integer", "minimum": 0 }
+              }
+            }
+          }
+        }
+      },
+      {
+        "if": { "properties": { "type": { "const": "image" } } },
+        "then": {
+          "required": ["image_name", "content", "image", "image_id", "bbox"],
+          "properties": {
+            "image_name": { "type": "string" },
+            "content": { "type": "string" },
+            "image": { "type": "string" },
+            "image_id": { "type": "string" },
+            "bbox": {
+              "type": "array",
+              "items": { "type": "number" },
+              "minItems": 4,
+              "maxItems": 4
+            }
+          }
+        }
+      },
+      {
+        "if": { "properties": { "type": { "const": "chart" } } },
+        "then": {
+          "required": ["chart_type", "content", "image", "image_name"],
+          "properties": {
+            "chart_type": {
+              "type": "string",
+              "enum": ["bar", "line", "pie", "scatter", "area", "radar", "doughnut", "bubble", "unknown"]
+            },
+            "content": { "type": "string", "minLength": 1 },
+            "image": { "type": "string" },
+            "image_name": { "type": "string" }
+          }
+        }
+      },
+      {
+        "if": { "properties": { "type": { "const": "formula" } } },
+        "then": {
+          "required": ["content", "formula_type"],
+          "properties": {
+            "content": { "type": "string", "minLength": 1 },
+            "formula_type": {
+              "type": "string",
+              "enum": ["MathType", "OMML", "LaTeX"]
+            }
+          }
+        }
+      },
+      {
+        "if": { "properties": { "type": { "enum": ["header", "footer"] } } },
+        "then": {
+          "required": ["content", "page_scope"],
+          "properties": {
+            "content": { "type": "string", "minLength": 1 },
+            "page_scope": {
+              "type": "string",
+              "enum": ["all", "even", "odd"]
+            }
+          }
+        }
+      },
+      {
+        "if": { "properties": { "type": { "enum": ["footnote", "endnote"] } } },
+        "then": {
+          "required": ["content", "reference_id"],
+          "properties": {
+            "content": { "type": "string", "minLength": 1 },
+            "reference_id": { "type": "string" }
+          }
+        }
+      }
+    ]
+  }
+}

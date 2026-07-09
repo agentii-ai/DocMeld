@@ -29,6 +29,10 @@ def extract_elements(
         from docmeld.bronze.backends.docling_backend import DoclingBackend
 
         b = DoclingBackend()
+    elif backend == "soffice":
+        from docmeld.bronze.backends.soffice_backend import SofficeBackend
+
+        b = SofficeBackend()
     else:
         from docmeld.bronze.backends.pymupdf_backend import PyMuPDFBackend
 

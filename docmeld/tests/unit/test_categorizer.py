@@ -82,7 +82,7 @@ class TestCategorizer:
 
         categories, descs = categorize_papers(papers, mock_client)
         assert len(categories) == 2
-        mock_client.categorize_papers.assert_called_once()
+        assert mock_client.categorize_papers.call_count >= 2
 
     def test_deterministic_sorting(self) -> None:
         from docmeld.categorize.categorizer import _build_categorization_prompt

@@ -111,3 +111,73 @@ class TestBronzePipelineSingleFile:
 
         page_nos = [e["page_no"] for e in elements]
         assert page_nos == sorted(page_nos)
+
+
+class TestBronzeDocxProcessing:
+    """Tests for .docx bronze processing."""
+
+    def test_processes_docx_via_docling(self, tmp_path: Path) -> None:
+        from docmeld.bronze.processor import BronzeProcessor
+        import shutil
+
+        samples_dir = Path(__file__).resolve().parents[3] / "samples"
+        docx_file = samples_dir / "sample_tables.docx"
+        if not docx_file.exists():
+            pytest.skip("sample_tables.docx not found")
+
+        docx_copy = tmp_path / "sample_tables.docx"
+        shutil.copy(docx_file, docx_copy)
+
+        processor = BronzeProcessor()
+        result = processor.process_file(str(docx_copy), backend="docling")
+
+        assert result.element_count > 0, "Should extract elements from .docx"
+        assert result.page_count >= 1
+        assert Path(result.output_path).exists()
+
+        with open(result.output_path) as f:
+            elements = json.load(f)
+        assert isinstance(elements, list)
+        for elem in elements:
+            assert "type" in elem
+            assert "page_no" in elem
+            assert elem["page_no"] >= 1
+
+    def test_docx_output_has_element_id_and_parent_id(self, tmp_path: Path) -> None:
+        from docmeld.bronze.processor import BronzeProcessor
+        import shutil
+
+        samples_dir = Path(__file__).resolve().parents[3] / "samples"
+        docx_file = samples_dir / "sample_multipage.docx"
+        if not docx_file.exists():
+            pytest.skip("sample_multipage.docx not found")
+
+        docx_copy = tmp_path / "sample_multipage.docx"
+        shutil.copy(docx_file, docx_copy)
+
+        processor = BronzeProcessor()
+        result = processor.process_file(str(docx_copy), backend="docling")
+
+        with open(result.output_path) as f:
+            elements = json.load(f)
+        for elem in elements:
+            assert "element_id" in elem
+            assert "parent_id" in elem
+
+    def test_docx_filename_sanitization(self, tmp_path: Path) -> None:
+        from docmeld.bronze.filename_sanitizer import get_output_name
+        import shutil
+
+        samples_dir = Path(__file__).resolve().parents[3] / "samples"
+        docx_file = samples_dir / "sample_tables.docx"
+        if not docx_file.exists():
+            pytest.skip("sample_tables.docx not found")
+
+        docx_copy = tmp_path / "sample_tables.docx"
+        shutil.copy(docx_file, docx_copy)
+
+        output_name = get_output_name(str(docx_copy))
+        assert "_" in output_name
+        assert len(output_name) > 0
+        # Check it doesn't end with the hash (stem only)
+        assert "." not in output_name
