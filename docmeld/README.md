@@ -26,7 +26,15 @@
 
 ---
 
-DocMeld converts PDF, Word documents into structured, agent-consumable formats through a three-stage pipeline — without requiring expensive OCR, VLM, or multimodal models. Built for the age of AI agents, it bridges the gap between static documents and the structured knowledge that LLMs need.
+DocMeld converts PDF, Word, and PowerPoint documents into structured, agent-consumable formats through a three-stage pipeline — without requiring expensive OCR, VLM, or multimodal models. Built for the age of AI agents, it bridges the gap between static documents and the structured knowledge that LLMs need.
+
+**Supported formats**: `.pdf`, `.docx`, `.doc` (via LibreOffice), `.pptx`, `.ppt` (via LibreOffice).
+
+```bash
+# PowerPoint support
+pip install docmeld[pptx]      # .pptx via python-pptx
+pip install docmeld[office]    # .docx + .pptx
+```
 
 Most tools stop at format conversion. DocMeld goes further: **Document → Structured Elements → Page Knowledge → AI-Enriched Metadata**, producing outputs ready for RAG pipelines, agent systems, and downstream AI workflows.
 
@@ -137,6 +145,14 @@ Supported element types:
 | `text` | `content` | Paragraph content |
 | `table` | `content`, `summary`, `table_data` | Markdown tables with structured data |
 | `image` | `image_name`, `image`, `bbox`, `image_id` | Base64-encoded images with metadata |
+| `chart` | `chart_type`, `content`, `image` | Chart data as markdown table + image fallback |
+| `formula` | `content`, `formula_type` | LaTeX/OMML formulas |
+| `smartart` | `smartart_type`, `content`, `image` | SmartArt diagram text (PPTX) |
+| `notes` | `content` | Speaker notes (PPTX) |
+| `group` | `content`, `child_count` | Grouped shapes (PPTX) |
+| `comment` | `content`, `author` | Reviewer comments (PPTX) |
+| `header`/`footer` | `content`, `page_scope` | Page/slide margins |
+| `footnote`/`endnote` | `content`, `reference_id` | Document notes |
 
 All elements include `page_no`, `element_id`, and `parent_id` for cross-referencing.
 
@@ -342,7 +358,8 @@ Element types are validated at creation time. New types may be added in minor ve
 - [ ] Paper-to-PRD generation
 - [ ] Paper-to-workflow extraction
 - [ ] Book-to-Claude-Skills generation
-- [ ] DOCX / PPTX support
+- [x] DOCX support
+- [x] PPTX / PPT support
 - [ ] OCR for scanned PDFs (`pip install docmeld[ocr]`)
 - [ ] Agent prompt generation
 - [ ] LangChain / LlamaIndex integration

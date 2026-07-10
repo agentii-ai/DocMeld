@@ -143,3 +143,87 @@ class TestRenderPage:
         content, _ = render_page(elements, tracker, counters)
         assert "[^1]" in content
         assert "Source text" in content
+
+
+class TestPptxMarkers:
+    """T031: silver rendering for smartart, notes, comment markers."""
+
+    def _render(self, elements):
+        from docmeld.silver.markdown_renderer import new_counters, render_page
+        from docmeld.silver.title_tracker import TitleTracker
+
+        return render_page(elements, TitleTracker(), new_counters())
+
+    def test_smartart_marker(self) -> None:
+        content, counters = self._render(
+            [{"type": "smartart", "smartart_type": "process", "content": "- A\n- B", "page_no": 1}]
+        )
+        assert "[[SmartArt1 type=process]]" in content
+        assert "[/SmartArt1]" in content
+        assert "- A" in content
+        assert counters["smartart"] == 1
+
+    def test_notes_marker(self) -> None:
+        content, _ = self._render(
+            [{"type": "notes", "content": "Emphasize growth", "page_no": 1}]
+        )
+        assert "[Notes]" in content
+        assert "Emphasize growth" in content
+        assert "[/Notes]" in content
+
+    def test_comment_marker_with_author(self) -> None:
+        content, _ = self._render(
+            [{"type": "comment", "content": "Fix FY25", "author": "A. Reviewer", "page_no": 1}]
+        )
+        assert "[Comment: A. Reviewer]" in content
+        assert "Fix FY25" in content
+        assert "[/Comment]" in content
+
+    def test_global_counters_across_pages(self) -> None:
+        from docmeld.silver.markdown_renderer import new_counters, render_page
+        from docmeld.silver.title_tracker import TitleTracker
+
+        tracker = TitleTracker()
+        counters = new_counters()
+        c1, counters = render_page(
+            [{"type": "smartart", "smartart_type": "cycle", "content": "x", "page_no": 1}],
+            tracker, counters,
+        )
+        c2, counters = render_page(
+            [{"type": "smartart", "smartart_type": "list", "content": "y", "page_no": 2}],
+            tracker, counters,
+        )
+        assert "[[SmartArt1" in c1
+        assert "[[SmartArt2" in c2
+
+    def test_chart_and_formula_still_render(self) -> None:
+        content, counters = self._render(
+            [
+                {"type": "chart", "chart_type": "bar", "content": "| a |\n| --- |\n| 1 |", "page_no": 1},
+                {"type": "formula", "content": "E=mc^2", "formula_type": "OMML", "page_no": 1},
+            ]
+        )
+        assert "[[Chart1 type=bar]]" in content
+        assert "[[Formula1 type=OMML]]" in content
+
+
+class TestImageMarker:
+    """FR-028: images render as [[Image: description]]."""
+
+    def _render(self, elements):
+        from docmeld.silver.markdown_renderer import new_counters, render_page
+        from docmeld.silver.title_tracker import TitleTracker
+
+        return render_page(elements, TitleTracker(), new_counters())
+
+    def test_image_marker_uses_description(self) -> None:
+        content, _ = self._render(
+            [{"type": "image", "image_name": "pic.png", "content": "A revenue chart", "page_no": 1}]
+        )
+        assert "[[Image: A revenue chart]]" in content
+
+    def test_image_marker_falls_back_to_name(self) -> None:
+        content, _ = self._render(
+            [{"type": "image", "image_name": "pic.png", "content": "", "page_no": 1}]
+        )
+        assert "[[Image: pic.png]]" in content

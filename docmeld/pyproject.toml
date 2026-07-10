@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "docmeld"
-version = "0.2.0"
-description = "Lightweight PDF to agent-ready knowledge pipeline"
+version = "0.3.0"
+description = "Lightweight PDF, Word & PowerPoint to agent-ready knowledge pipeline"
 readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
 authors = [
     {name = "DocMeld Contributors"}
 ]
-keywords = ["pdf", "parsing", "agents", "llm", "document-processing"]
+keywords = ["pdf", "docx", "pptx", "powerpoint", "word", "parsing", "agents", "llm", "document-processing"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -36,6 +36,8 @@ dependencies = [
 
 [project.optional-dependencies]
 docling = ["docling>=2.0.0"]
+pptx = ["python-pptx>=0.6.23"]
+office = ["docling>=2.0.0", "python-pptx>=0.6.23"]
 dev = [
     "pytest>=7.4.0",
     "pytest-cov>=4.1.0",

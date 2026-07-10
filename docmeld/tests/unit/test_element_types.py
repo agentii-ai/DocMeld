@@ -491,3 +491,107 @@ class TestParseElement:
 
         with pytest.raises(ValueError, match="Unknown element type"):
             parse_element({"type": "unknown", "page_no": 1})
+
+
+class TestSmartArtElement:
+    def test_valid_smartart(self) -> None:
+        from docmeld.bronze.element_types import SmartArtElement
+
+        elem = SmartArtElement(
+            type="smartart", smartart_type="process",
+            content="- Plan\n- Build\n- Ship", page_no=3,
+        )
+        assert elem.type == "smartart"
+        assert elem.smartart_type == "process"
+        assert elem.hidden is False
+
+    def test_smartart_image_fallback_allows_empty_content(self) -> None:
+        from docmeld.bronze.element_types import SmartArtElement
+
+        elem = SmartArtElement(
+            type="smartart", smartart_type="cycle", image="base64==", page_no=1
+        )
+        assert elem.content == ""
+        assert elem.image == "base64=="
+
+
+class TestNotesElement:
+    def test_valid_notes(self) -> None:
+        from docmeld.bronze.element_types import NotesElement
+
+        elem = NotesElement(type="notes", content="Speaker note here", page_no=2)
+        assert elem.type == "notes"
+        assert elem.content == "Speaker note here"
+
+    def test_notes_requires_content(self) -> None:
+        from docmeld.bronze.element_types import NotesElement
+
+        with pytest.raises(ValidationError):
+            NotesElement(type="notes", content="", page_no=1)
+
+
+class TestGroupElement:
+    def test_valid_group(self) -> None:
+        from docmeld.bronze.element_types import GroupElement
+
+        elem = GroupElement(
+            type="group", content="Group of 3", child_count=3, page_no=4
+        )
+        assert elem.type == "group"
+        assert elem.child_count == 3
+
+    def test_group_child_count_non_negative(self) -> None:
+        from docmeld.bronze.element_types import GroupElement
+
+        with pytest.raises(ValidationError):
+            GroupElement(type="group", child_count=-1, page_no=1)
+
+
+class TestCommentElement:
+    def test_valid_comment(self) -> None:
+        from docmeld.bronze.element_types import CommentElement
+
+        elem = CommentElement(
+            type="comment", content="Fix this", author="A. Reviewer", page_no=2
+        )
+        assert elem.type == "comment"
+        assert elem.author == "A. Reviewer"
+
+    def test_comment_author_defaults_empty(self) -> None:
+        from docmeld.bronze.element_types import CommentElement
+
+        elem = CommentElement(type="comment", content="No author", page_no=1)
+        assert elem.author == ""
+
+
+class TestHiddenField:
+    def test_hidden_defaults_false_all_types(self) -> None:
+        from docmeld.bronze.element_types import TextElement, NotesElement
+
+        assert TextElement(type="text", content="x", page_no=1).hidden is False
+        assert NotesElement(type="notes", content="x", page_no=1).hidden is False
+
+    def test_hidden_can_be_set(self) -> None:
+        from docmeld.bronze.element_types import TextElement
+
+        assert TextElement(type="text", content="x", page_no=1, hidden=True).hidden is True
+
+
+class TestParseElementNewTypes:
+    def test_parse_smartart(self) -> None:
+        from docmeld.bronze.element_types import parse_element, SmartArtElement
+
+        elem = parse_element({"type": "smartart", "smartart_type": "list", "content": "a", "page_no": 1})
+        assert isinstance(elem, SmartArtElement)
+
+    def test_parse_all_new_types(self) -> None:
+        from docmeld.bronze.element_types import parse_element
+
+        for t, extra in [
+            ("smartart", {"smartart_type": "process", "content": "x"}),
+            ("notes", {"content": "x"}),
+            ("group", {"child_count": 2}),
+            ("comment", {"content": "x"}),
+        ]:
+            elem = parse_element({"type": t, "page_no": 1, **extra})
+            assert elem.type == t

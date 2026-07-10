@@ -171,3 +171,63 @@ class TestElementSchema:
         for elem in elements:
             assert elem["type"] in ["title", "text", "table", "image", "chart", "formula", "header", "footer", "footnote", "endnote"]
             assert elem["page_no"] >= 1
+
+
+class TestFourteenTypeSchema:
+    """T009: contract tests for the 007-mvp-ppt-pipeline 14-type schema."""
+
+    SCHEMA_007 = (
+        Path(__file__).resolve().parents[3]
+        / "specs" / "007-mvp-ppt-pipeline" / "contracts" / "element-schema.json"
+    )
+
+    def _schema(self) -> dict:
+        with open(self.SCHEMA_007) as f:
+            return json.load(f)
+
+    def test_schema_exists_with_14_types(self) -> None:
+        schema = self._schema()
+        allowed = schema["items"]["properties"]["type"]["enum"]
+        for t in ("smartart", "notes", "group", "comment"):
+            assert t in allowed
+        assert len(allowed) == 14
+
+    def test_element_id_pattern_is_four_digits(self) -> None:
+        schema = self._schema()
+        assert schema["items"]["properties"]["element_id"]["pattern"] == r"^e_\d{4}$"
+
+    def test_new_types_validate(self) -> None:
+        import jsonschema
+
+        schema = self._schema()
+        docs = [
+            {"type": "smartart", "smartart_type": "process", "content": "a", "page_no": 1, "element_id": "e_0001"},
+            {"type": "notes", "content": "note", "page_no": 1, "element_id": "e_0002"},
+            {"type": "group", "child_count": 2, "page_no": 1, "element_id": "e_0003"},
+            {"type": "comment", "content": "c", "author": "R", "page_no": 1, "element_id": "e_0004"},
+        ]
+        jsonschema.validate(instance=docs, schema=schema)
+
+    def test_backward_compatible_four_type(self) -> None:
+        import jsonschema
+
+        schema = self._schema()
+        docs = [
+            {"type": "title", "level": 0, "content": "T", "page_no": 1},
+            {"type": "text", "content": "hello", "page_no": 1},
+        ]
+        jsonschema.validate(instance=docs, schema=schema)
+
+    def test_large_element_id_accepted(self) -> None:
+        import jsonschema
+
+        schema = self._schema()
+        docs = [{"type": "text", "content": "x", "page_no": 1, "element_id": "e_1234"}]
+        jsonschema.validate(instance=docs, schema=schema)
+
+    def test_hidden_flag_allowed(self) -> None:
+        import jsonschema
+
+        schema = self._schema()
+        docs = [{"type": "text", "content": "x", "page_no": 1, "hidden": True}]
+        jsonschema.validate(instance=docs, schema=schema)

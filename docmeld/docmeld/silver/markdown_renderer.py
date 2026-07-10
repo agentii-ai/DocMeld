@@ -25,7 +25,7 @@ PageCounters = Dict[str, int]
 
 def new_counters() -> PageCounters:
     """Create a new counters dict for element numbering."""
-    return {"table": 0, "chart": 0, "formula": 0}
+    return {"table": 0, "chart": 0, "formula": 0, "smartart": 0}
 
 
 def render_page(
@@ -35,8 +35,9 @@ def render_page(
 ) -> Tuple[str, PageCounters]:
     """Render a list of elements into markdown page content.
 
-    Supports 10 element types: title, text, table, image, chart,
-    formula, header, footer, footnote, endnote.
+    Supports 14 element types: title, text, table, image, chart,
+    formula, header, footer, footnote, endnote, smartart, notes,
+    group, comment.
 
     Args:
         elements: List of element dicts for this page.
@@ -80,7 +81,9 @@ def render_page(
 
         elif elem_type == "image":
             image_name = elem.get("image_name", "image")
-            parts.append(f"![{image_name}]")
+            description = (elem.get("content") or "").strip().splitlines()
+            desc = description[0] if description else image_name
+            parts.append(f"[[Image: {desc}]]")
 
         elif elem_type == "chart":
             chart_content = elem["content"]
@@ -114,6 +117,32 @@ def render_page(
         elif elem_type == "footnote" or elem_type == "endnote":
             ref = elem.get("reference_id", "N")
             parts.append(f"[^{ref}]: {elem['content']}")
+
+        elif elem_type == "smartart":
+            counters["smartart"] += 1
+            n = counters["smartart"]
+            sa_type = elem.get("smartart_type", "unknown")
+            parts.append(f"[[SmartArt{n} type={sa_type}]]")
+            if elem.get("content", "").strip():
+                parts.append(elem["content"])
+            parts.append(f"[/SmartArt{n}]")
+
+        elif elem_type == "notes":
+            parts.append("[Notes]")
+            parts.append(elem["content"])
+            parts.append("[/Notes]")
+
+        elif elem_type == "comment":
+            author = elem.get("author", "")
+            parts.append(f"[Comment: {author}]")
+            parts.append(elem["content"])
+            parts.append("[/Comment]")
+
+        elif elem_type == "group":
+            # Group is a structural container; children render on their own.
+            content = elem.get("content", "")
+            if content:
+                parts.append(f"[Group] {content} [/Group]")
 
     page_content = "\n\n".join(parts)
     return page_content, counters

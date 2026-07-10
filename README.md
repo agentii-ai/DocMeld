@@ -11,8 +11,9 @@
   <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"></a>
   <a href="https://docs.astral.sh/ruff/"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
   <a href="https://mypy-lang.org/"><img src="https://img.shields.io/badge/type%20checked-mypy-blue.svg" alt="Checked with mypy"></a>
-  <img src="https://img.shields.io/badge/tests-144%20passed-brightgreen.svg" alt="Tests: 144 passed">
-  <img src="https://img.shields.io/badge/coverage-81%25-green.svg" alt="Coverage: 81%">
+  <img src="https://img.shields.io/badge/tests-309%20passed-brightgreen.svg" alt="Tests: 309 passed">
+  <img src="https://img.shields.io/badge/coverage-80%25-green.svg" alt="Coverage: 80%">
+  <a href="https://pypi.org/project/docmeld/"><img src="https://img.shields.io/badge/pypi-0.3.0-blue.svg" alt="PyPI: 0.3.0"></a>
 </p>
 
 <p align="center">
@@ -26,9 +27,11 @@
 
 ---
 
-DocMeld converts PDF, Word documents into structured, agent-consumable formats through a three-stage pipeline — without requiring expensive OCR, VLM, or multimodal models. Built for the age of AI agents, it bridges the gap between static documents and the structured knowledge that LLMs need.
+DocMeld converts PDF, Word, and PowerPoint documents into structured, agent-consumable formats through a three-stage pipeline — without requiring expensive OCR, VLM, or multimodal models. Built for the age of AI agents, it bridges the gap between static documents and the structured knowledge that LLMs need.
 
 Most tools stop at format conversion. DocMeld goes further: **Document → Structured Elements → Page Knowledge → AI-Enriched Metadata**, producing outputs ready for RAG pipelines, agent systems, and downstream AI workflows.
+
+**Supported formats:** `.pdf`, `.docx`, `.doc` (via LibreOffice), `.pptx`, `.ppt` (via LibreOffice).
 
 ## Why DocMeld?
 
@@ -50,18 +53,22 @@ Most tools stop at format conversion. DocMeld goes further: **Document → Struc
 pip install docmeld
 ```
 
-With optional Docling backend:
+Optional backends for richer formats:
 
 ```bash
-pip install docmeld[docling]
+pip install docmeld[docling]   # Docling backend (DOCX + advanced PDF)
+pip install docmeld[pptx]      # PowerPoint (.pptx) via python-pptx
+pip install docmeld[office]    # Everything: Docling + python-pptx
 ```
 
-### Process your first PDF
+> Legacy `.doc` / `.ppt` additionally require [LibreOffice](https://www.libreoffice.org/download/) (`soffice`) on your PATH.
+
+### Process your first document
 
 ```python
 from docmeld import DocMeldParser
 
-parser = DocMeldParser("research_paper.pdf")
+parser = DocMeldParser("research_paper.pdf")   # or .docx / .pptx
 result = parser.process_all()
 print(f"Processed {result.successful}/{result.total_files} files in {result.processing_time_seconds}s")
 ```
@@ -70,9 +77,10 @@ Or from the command line:
 
 ```bash
 docmeld process research_paper.pdf
+docmeld process quarterly_deck.pptx --backend auto
 ```
 
-That's it. Your PDF is now structured JSON, page-by-page JSONL, and (optionally) AI-enriched metadata.
+That's it. Your document is now structured JSON, page-by-page JSONL, and (optionally) AI-enriched metadata.
 
 ## Pipeline Architecture
 
@@ -82,18 +90,19 @@ DocMeld uses a three-stage medallion architecture. Each stage is independently r
 ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
 │   BRONZE    │      │   SILVER    │      │    GOLD     │
 │             │      │             │      │             │
-│  PDF → JSON │─────▶│ JSON → JSONL│─────▶│ JSONL → AI  │
+│  Doc → JSON │─────▶│ JSON → JSONL│─────▶│ JSONL → AI  │
 │  elements   │      │  pages      │      │  metadata   │
 │             │      │             │      │             │
 │  PyMuPDF /  │      │  Title      │      │  DeepSeek   │
-│  Docling    │      │  hierarchy  │      │  enrichment │
+│  Docling /  │      │  hierarchy  │      │  enrichment │
+│  python-pptx│      │             │      │             │
 └─────────────┘      └─────────────┘      └─────────────┘
    offline              offline            requires API key
 ```
 
-### Bronze: PDF → Structured JSON
+### Bronze: Document → Structured JSON
 
-Extracts document elements (titles, text, tables, images) into a unified JSON format with element IDs and parent-child hierarchy.
+Extracts document elements (titles, text, tables, images, charts, formulas, SmartArt, speaker notes, comments, and more) into a unified JSON format with element IDs and parent-child hierarchy. The page unit is the physical page for PDF/Word and the **slide** for PowerPoint.
 
 ```json
 [
@@ -102,23 +111,23 @@ Extracts document elements (titles, text, tables, images) into a unified JSON fo
     "level": 0,
     "content": "Executive Summary",
     "page_no": 1,
-    "element_id": "e_001",
+    "element_id": "e_0001",
     "parent_id": ""
   },
   {
     "type": "text",
     "content": "The company reported strong Q2 results...",
     "page_no": 1,
-    "element_id": "e_002",
-    "parent_id": "e_001"
+    "element_id": "e_0002",
+    "parent_id": "e_0001"
   },
   {
     "type": "table",
     "content": "| Metric | Q1 | Q2 |\n|---|---|---|\n| Revenue | 10M | 15M |",
     "summary": "Items: Revenue",
     "page_no": 2,
-    "element_id": "e_003",
-    "parent_id": "e_001",
+    "element_id": "e_0003",
+    "parent_id": "e_0001",
     "table_data": {
       "headers": ["Metric", "Q1", "Q2"],
       "rows": [["Revenue", "10M", "15M"]],
@@ -134,11 +143,19 @@ Supported element types:
 | Type | Fields | Description |
 |---|---|---|
 | `title` | `level`, `content` | Headings with hierarchy (0–5) |
-| `text` | `content` | Paragraph content |
+| `text` | `content` | Paragraph content (hyperlinks preserved inline as `[text](url)`) |
 | `table` | `content`, `summary`, `table_data` | Markdown tables with structured data |
 | `image` | `image_name`, `image`, `bbox`, `image_id` | Base64-encoded images with metadata |
+| `chart` | `chart_type`, `content`, `image` | Chart data as a markdown table + image fallback |
+| `formula` | `content`, `formula_type` | Equations (LaTeX / OMML) |
+| `smartart` | `smartart_type`, `content`, `image` | SmartArt diagram text (PPTX) |
+| `notes` | `content` | Speaker notes (PPTX) |
+| `group` | `content`, `child_count` | Grouped shapes; children link via `parent_id` (PPTX) |
+| `comment` | `content`, `author` | Reviewer comments (PPTX) |
+| `footer` | `content`, `page_scope` | Slide/page footers |
+| `header` / `footnote` / `endnote` | `content`, … | Document margins & notes (DOCX) |
 
-All elements include `page_no`, `element_id`, and `parent_id` for cross-referencing.
+All elements include `page_no`, `element_id`, and `parent_id` for cross-referencing. Elements on hidden slides carry `hidden: true`.
 
 ### Silver: JSON → Page-by-Page JSONL
 
@@ -232,15 +249,32 @@ print(f"{gold.pages_enriched} enriched, {gold.pages_failed} failed")
 
 ### Swappable Backends
 
-DocMeld supports multiple PDF parsing backends through a pluggable architecture:
+DocMeld supports multiple parsing backends through a pluggable architecture. With `--backend auto` (default), the format is detected from the file extension and routed automatically:
 
 ```python
-# Default: PyMuPDF (lightweight, fast)
+# PDF (default): PyMuPDF — lightweight, fast
 parser = DocMeldParser("paper.pdf", backend="pymupdf")
 
-# Alternative: Docling (IBM's ML-powered parser, better for complex layouts)
-parser = DocMeldParser("paper.pdf", backend="docling")
+# DOCX: Docling (IBM's ML-powered OOXML parser)
+parser = DocMeldParser("report.docx", backend="docling")
+
+# PPTX: python-pptx — native slide/shape extraction
+parser = DocMeldParser("deck.pptx", backend="pptx")
+
+# Legacy .doc / .ppt: LibreOffice bridge → PDF → PyMuPDF
+parser = DocMeldParser("old.ppt", backend="soffice")
+
+# Auto-detect by extension (recommended)
+parser = DocMeldParser("anything.pptx", backend="auto")
 ```
+
+| Backend | Formats | Requires |
+|---|---|---|
+| `pymupdf` | `.pdf` | core install |
+| `docling` | `.docx`, `.pdf` | `docmeld[docling]` |
+| `pptx` | `.pptx` | `docmeld[pptx]` |
+| `soffice` | `.doc`, `.ppt` | LibreOffice |
+| `auto` | all of the above | per-format |
 
 ### Working with Elements
 
@@ -286,13 +320,14 @@ docmeld process paper.pdf
 docmeld process /path/to/papers/
 
 # Individual stages
-docmeld bronze paper.pdf                    # PDF → JSON
+docmeld bronze paper.pdf                    # Doc → JSON
 docmeld silver paper_a3f5c2/paper_a3f5c2.json    # JSON → JSONL
 docmeld gold paper_a3f5c2/paper_a3f5c2.jsonl     # JSONL → enriched JSONL
 
 # Choose parsing backend
-docmeld bronze paper.pdf --backend docling
-docmeld process paper.pdf --backend pymupdf       # default
+docmeld bronze report.docx --backend docling
+docmeld bronze deck.pptx   --backend pptx
+docmeld process paper.pdf  --backend auto         # default — detects format
 ```
 
 ## Configuration
@@ -323,11 +358,18 @@ from docmeld.bronze.element_types import (
     TitleElement,    # type, level, content, page_no, element_id, parent_id
     TextElement,     # type, content, page_no, element_id, parent_id
     TableElement,    # type, content, summary, page_no, element_id, parent_id, table_data
-    ImageElement,    # type, image_name, content, image, image_id, bbox, page_no, element_id, parent_id
+    ImageElement,    # type, image_name, content, image, image_id, bbox, ...
+    ChartElement,    # type, chart_type, content, image, image_name, ...
+    FormulaElement,  # type, content, formula_type, ...
+    SmartArtElement, # type, smartart_type, content, image, ...
+    NotesElement,    # type, content, ...            (speaker notes)
+    GroupElement,    # type, content, child_count, ...
+    CommentElement,  # type, content, author, ...
+    # + HeaderElement, FooterElement, FootnoteElement, EndnoteElement
 )
 ```
 
-Element types are validated at creation time. New types may be added in minor versions, but existing types will never change shape in minor/patch releases.
+Element types are validated at creation time. All 14 types share `type`, `page_no`, `element_id`, `parent_id`, and an optional `hidden` flag. New types may be added in minor versions, but existing types will never change shape in minor/patch releases.
 
 ## Roadmap
 
@@ -338,11 +380,13 @@ Element types are validated at creation time. New types may be added in minor ve
 - [x] Structured table data extraction
 - [x] Idempotent processing
 - [x] Batch folder processing
+- [x] DOCX support (Docling backend)
+- [x] PPTX / PPT support (python-pptx + LibreOffice bridge)
+- [x] Rich element types (chart, formula, SmartArt, notes, comments, groups)
 - [ ] Research paper batch categorization
 - [ ] Paper-to-PRD generation
 - [ ] Paper-to-workflow extraction
 - [ ] Book-to-Claude-Skills generation
-- [ ] DOCX / PPTX support
 - [ ] OCR for scanned PDFs (`pip install docmeld[ocr]`)
 - [ ] Agent prompt generation
 - [ ] LangChain / LlamaIndex integration
@@ -362,7 +406,7 @@ pip install -e ".[dev]"
 ### Quality Gates
 
 ```bash
-pytest tests/ -v --cov=docmeld       # 144 tests, 81% coverage
+pytest tests/ -v --cov=docmeld       # 309 tests, 80% core coverage
 ruff check docmeld/                   # Linting
 black --check docmeld/                # Formatting
 mypy docmeld/                         # Strict type checking
@@ -379,7 +423,9 @@ docmeld/
 │   ├── bronze/
 │   │   ├── backends/
 │   │   │   ├── pymupdf_backend.py   # PyMuPDF + pymupdf4llm
-│   │   │   └── docling_backend.py   # Docling (optional)
+│   │   │   ├── docling_backend.py   # Docling (optional, DOCX/PDF)
+│   │   │   ├── pptx_backend.py      # python-pptx (PPTX slide extraction)
+│   │   │   └── soffice_backend.py   # LibreOffice bridge (.doc/.ppt)
 │   │   ├── element_extractor.py     # Extraction + post-processing
 │   │   ├── element_types.py         # Pydantic element models
 │   │   ├── filename_sanitizer.py    # Safe filenames + MD5 hashing
@@ -422,7 +468,7 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ```bibtex
 @software{docmeld2026,
-  title     = {DocMeld: Lightweight PDF to Agent-Ready Knowledge Pipeline},
+  title     = {DocMeld: Lightweight PDF, Word & PowerPoint to Agent-Ready Knowledge Pipeline},
   year      = {2026},
   license   = {MIT},
   url       = {https://github.com/[username]/docmeld}

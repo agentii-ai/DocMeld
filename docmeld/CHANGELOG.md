@@ -5,6 +5,22 @@ All notable changes to DocMeld will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-07-10
+
+### Added
+- PPT/PPTX pipeline: Process PowerPoint presentations alongside PDFs and Word docs (bronze → silver → gold)
+- 4 new element types: smartart, notes, group, comment (14 total)
+- `PptxBackend`: native python-pptx slide-level shape extraction (text, title, table, image, chart, formula, smartart, notes, group, footer, comment)
+- Slide-based pagination (`page_no` = physical slide number, 1-indexed, continuous including hidden slides)
+- `hidden` flag on elements from hidden slides; carried through all stages
+- Inline hyperlink preservation as markdown `[text](url)`
+- Hybrid geometric + z-order element ordering within slides
+- `SofficeBackend` extended to accept legacy `.ppt` files
+- `--backend pptx` CLI choice; `auto` routes `.pptx`→pptx, `.ppt`→soffice
+- `[[SmartArtN]]`/`[Notes]`/`[Comment: author]` marker syntax in silver JSONL output
+- `pptx` and `office` optional-dependency extras
+- `element_id` widened to 4 digits (`e_0001`) to support large presentations
+
 ## [0.2.0] - 2026-07-09
 
 ### Added

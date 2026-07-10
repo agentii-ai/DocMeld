@@ -115,3 +115,26 @@ class TestGetOutputName:
         assert ")" not in name
         assert "!" not in name
         assert " " not in name
+
+
+class TestPptxExtensionHandling:
+    """T022: sanitizer works for .pptx/.ppt files."""
+
+    def test_pptx_output_name(self, tmp_path):
+        from docmeld.bronze.filename_sanitizer import get_output_name
+
+        f = tmp_path / "Q4 Earnings (Final)!.pptx"
+        f.write_bytes(b"pptx-bytes")
+        name = get_output_name(str(f))
+        assert name.startswith("q4_earnings_final_")
+        assert "(" not in name and ")" not in name and "!" not in name
+        assert len(name.split("_")[-1]) == 6
+
+    def test_ppt_output_name(self, tmp_path):
+        from docmeld.bronze.filename_sanitizer import get_output_name
+
+        f = tmp_path / "old deck.ppt"
+        f.write_bytes(b"ppt-bytes")
+        name = get_output_name(str(f))
+        assert name.startswith("old_deck_")
+        assert " " not in name

@@ -181,3 +181,79 @@ class TestBronzeDocxProcessing:
         assert len(output_name) > 0
         # Check it doesn't end with the hash (stem only)
         assert "." not in output_name
+
+
+class TestBronzePptxPipeline:
+    """T021/T051/T052: .pptx and mixed-folder bronze processing."""
+
+    PPT_SAMPLES = Path(__file__).resolve().parents[3] / "samples" / "ppt"
+
+    def test_processes_pptx_via_pptx_backend(self, tmp_path: Path) -> None:
+        import shutil
+        from docmeld.bronze.processor import BronzeProcessor
+
+        src = self.PPT_SAMPLES / "sample_pptx_basic.pptx"
+        if not src.exists():
+            pytest.skip("sample_pptx_basic.pptx not found")
+        copy = tmp_path / "sample_pptx_basic.pptx"
+        shutil.copy(src, copy)
+
+        result = BronzeProcessor().process_file(str(copy), backend="auto")
+        assert result.element_count > 0
+        assert result.page_count >= 1
+        assert Path(result.output_path).exists()
+        with open(result.output_path) as f:
+            elements = json.load(f)
+        for elem in elements:
+            assert "type" in elem and "page_no" in elem and elem["page_no"] >= 1
+            assert "element_id" in elem
+
+    def test_pptx_idempotent_reprocess(self, tmp_path: Path) -> None:
+        import shutil
+        from docmeld.bronze.processor import BronzeProcessor
+
+        src = self.PPT_SAMPLES / "sample_pptx_basic.pptx"
+        if not src.exists():
+            pytest.skip("sample not found")
+        copy = tmp_path / "deck.pptx"
+        shutil.copy(src, copy)
+        proc = BronzeProcessor()
+        r1 = proc.process_file(str(copy), backend="auto")
+        assert r1.skipped is False
+        r2 = proc.process_file(str(copy), backend="auto")
+        assert r2.skipped is True
+
+    def test_mixed_folder_routing_and_skips(self, tmp_path: Path) -> None:
+        import shutil
+        from docmeld.bronze.processor import BronzeProcessor
+
+        src = self.PPT_SAMPLES / "sample_pptx_basic.pptx"
+        if not src.exists():
+            pytest.skip("sample not found")
+        shutil.copy(src, tmp_path / "deck.pptx")
+        # unsupported presentation format → should be skipped, not fail
+        (tmp_path / "template.pptm").write_bytes(b"not really pptm")
+        (tmp_path / "notes.txt").write_text("ignore me")
+
+        result = BronzeProcessor().process_folder(str(tmp_path), backend="auto")
+        assert result.total_files == 1  # only the .pptx counted as processable
+        assert result.successful == 1
+        assert result.failed == 0
+
+    def test_batch_resilience_and_summary(self, tmp_path: Path) -> None:
+        import shutil
+        from docmeld.bronze.processor import BronzeProcessor
+
+        src = self.PPT_SAMPLES / "sample_pptx_basic.pptx"
+        if not src.exists():
+            pytest.skip("sample not found")
+        shutil.copy(src, tmp_path / "good.pptx")
+        # a corrupt .pptx (valid extension, invalid content) → should fail gracefully
+        (tmp_path / "broken.pptx").write_bytes(b"not a real pptx zip")
+
+        result = BronzeProcessor().process_folder(str(tmp_path), backend="auto")
+        assert result.total_files == 2
+        assert result.successful == 1
+        assert result.failed == 1
+        assert len(result.failures) == 1
+        assert result.failures[0].filename == "broken.pptx"

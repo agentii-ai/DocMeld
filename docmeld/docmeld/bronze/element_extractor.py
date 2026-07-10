@@ -33,6 +33,10 @@ def extract_elements(
         from docmeld.bronze.backends.soffice_backend import SofficeBackend
 
         b = SofficeBackend()
+    elif backend == "pptx":
+        from docmeld.bronze.backends.pptx_backend import PptxBackend
+
+        b = PptxBackend()
     else:
         from docmeld.bronze.backends.pymupdf_backend import PyMuPDFBackend
 
@@ -48,14 +52,38 @@ def extract_elements(
 
     _assign_element_ids(elements)
     _assign_parent_ids(elements)
+    _resolve_group_parents(elements)
 
     return elements
 
 
+def _resolve_group_parents(elements: List[Dict[str, Any]]) -> None:
+    """Link grouped child shapes to their parent group element.
+
+    The pptx backend tags group elements with a temporary ``_gid`` and each
+    grouped child with ``_pgid``. After element_ids are assigned, rewrite each
+    child's ``parent_id`` to the group's ``element_id`` (overriding the
+    title-based parent), then strip the temporary keys so they never reach
+    the JSON output.
+    """
+    gid_to_element_id: Dict[int, str] = {}
+    for elem in elements:
+        gid = elem.get("_gid")
+        if gid is not None:
+            gid_to_element_id[gid] = elem.get("element_id", "")
+
+    for elem in elements:
+        pgid = elem.get("_pgid")
+        if pgid is not None and pgid in gid_to_element_id:
+            elem["parent_id"] = gid_to_element_id[pgid]
+        elem.pop("_gid", None)
+        elem.pop("_pgid", None)
+
+
 def _assign_element_ids(elements: List[Dict[str, Any]]) -> None:
-    """Assign sequential element_id values (e_001, e_002, ...)."""
+    """Assign sequential element_id values (e_0001, e_0002, ...)."""
     for i, elem in enumerate(elements):
-        elem["element_id"] = f"e_{i + 1:03d}"
+        elem["element_id"] = f"e_{i + 1:04d}"
 
 
 def _assign_parent_ids(elements: List[Dict[str, Any]]) -> None:

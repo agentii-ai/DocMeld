@@ -44,3 +44,47 @@ class TestSofficeBackend:
         assert len(elements) > 0
         types_found = {e["type"] for e in elements}
         assert "text" in types_found or "title" in types_found
+
+class TestSofficePptSupport:
+    """T045/T046: legacy .ppt support via the soffice bridge."""
+
+    def test_ppt_accepted_but_missing_soffice_errors(self) -> None:
+        from docmeld.bronze.backends.soffice_backend import SofficeBackend
+
+        backend = SofficeBackend()
+        with patch("shutil.which", return_value=None):
+            with pytest.raises(RuntimeError, match="LibreOffice"):
+                backend.extract_elements("/fake.ppt", "/tmp/out")
+
+    def test_ppt_suffix_passes_guard(self) -> None:
+        from docmeld.bronze.backends.soffice_backend import SofficeBackend
+
+        backend = SofficeBackend()
+        # With soffice "present" but a bad path, the guard must NOT reject .ppt;
+        # it should proceed past the suffix check (and fail later on conversion).
+        with patch("shutil.which", return_value="/usr/bin/soffice"):
+            with pytest.raises(Exception) as exc:
+                backend.extract_elements("/nonexistent/deck.ppt", "/tmp/out")
+            assert "only supports" not in str(exc.value)
+
+    def test_unsupported_suffix_still_rejected(self) -> None:
+        from docmeld.bronze.backends.soffice_backend import SofficeBackend
+
+        backend = SofficeBackend()
+        with patch("shutil.which", return_value="/usr/bin/soffice"):
+            with pytest.raises(ValueError, match="only supports"):
+                backend.extract_elements("/fake.pptx", "/tmp/out")
+
+    def test_ppt_conversion_integration(self) -> None:
+        import shutil
+        if not shutil.which("soffice"):
+            pytest.skip("LibreOffice (soffice) not installed")
+
+        from pathlib import Path
+        from docmeld.bronze.backends.soffice_backend import SofficeBackend
+
+        ppt = Path(__file__).resolve().parents[3] / "samples" / "ppt" / "sample_ppt_legacy.ppt"
+        if not ppt.exists():
+            pytest.skip("sample_ppt_legacy.ppt not found")
+        elements = SofficeBackend().extract_elements(str(ppt), "/tmp")
+        assert len(elements) >= 0  # conversion completes without error

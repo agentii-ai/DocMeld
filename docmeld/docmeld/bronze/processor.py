@@ -15,8 +15,10 @@ logger = logging.getLogger("docmeld")
 # Supported file extensions
 WORD_EXTENSIONS = {".doc", ".docx"}
 PDF_EXTENSIONS = {".pdf"}
-SUPPORTED_EXTENSIONS = WORD_EXTENSIONS | PDF_EXTENSIONS
+PPT_EXTENSIONS = {".ppt", ".pptx"}
+SUPPORTED_EXTENSIONS = WORD_EXTENSIONS | PDF_EXTENSIONS | PPT_EXTENSIONS
 UNSUPPORTED_WORD_EXTENSIONS = {".docm", ".dotx", ".dot", ".rtf"}
+UNSUPPORTED_PPT_EXTENSIONS = {".pptm", ".potx", ".pot", ".ppsx", ".odp"}
 
 
 def _should_process(file_path: Path) -> bool:
@@ -28,6 +30,12 @@ def _should_process(file_path: Path) -> bool:
         logger.warning(
             f"Skipping unsupported Word format: {file_path.name} "
             f"(.docm/.dotx/.dot/.rtf not supported in this version)"
+        )
+        return False
+    if ext in UNSUPPORTED_PPT_EXTENSIONS:
+        logger.warning(
+            f"Skipping unsupported presentation format: {file_path.name} "
+            f"(.pptm/.potx/.pot/.ppsx/.odp not supported in this version)"
         )
         return False
     if ext:
@@ -43,6 +51,10 @@ def _detect_backend(file_path: Path, backend: str) -> str:
             if ext == ".doc":
                 return "soffice"
             return "docling"
+        if ext in PPT_EXTENSIONS:
+            if ext == ".ppt":
+                return "soffice"
+            return "pptx"
         return "pymupdf"
     return backend
 
@@ -87,19 +99,28 @@ class BronzeProcessor:
         # Create output directory
         output_dir.mkdir(exist_ok=True)
 
-        # Get page count (fitz for PDF, docling for DOCX/DOC)
-        ext = path.suffix.lower()
-        if ext in PDF_EXTENSIONS:
-            import fitz
-            doc = fitz.open(doc_path)
-            page_count = len(doc)
-            doc.close()
-        else:
-            # For .docx/.doc, get page count from extracted elements
-            page_count = 0
+        try:
+            # Get page count (fitz for PDF, docling for DOCX/DOC)
+            ext = path.suffix.lower()
+            if ext in PDF_EXTENSIONS:
+                import fitz
+                doc = fitz.open(doc_path)
+                page_count = len(doc)
+                doc.close()
+            else:
+                # For .docx/.doc/.pptx/.ppt, get page count from extracted elements
+                page_count = 0
 
-        # Extract elements
-        elements = extract_elements(doc_path, str(output_dir), backend=resolved_backend)
+            # Extract elements
+            elements = extract_elements(doc_path, str(output_dir), backend=resolved_backend)
+        except Exception:
+            # Do not leave an orphan empty output directory behind on failure
+            try:
+                if output_dir.exists() and not any(output_dir.iterdir()):
+                    output_dir.rmdir()
+            except OSError:
+                pass
+            raise
 
         # Get page count from elements if not set
         if page_count == 0:

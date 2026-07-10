@@ -60,7 +60,7 @@ class SilverProcessor:
         source = json_stem + ".pdf"  # default
 
         # The stem format is {name}_{hash6}. Try without hash suffix first.
-        for ext in (".pdf", ".docx", ".doc"):
+        for ext in (".pdf", ".docx", ".doc", ".pptx", ".ppt"):
             # 1. Try exact match (hashed file copied alongside)
             candidate = json_dir.parent / (json_stem + ext)
             if candidate.exists():

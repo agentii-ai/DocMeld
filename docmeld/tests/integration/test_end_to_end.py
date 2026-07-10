@@ -157,3 +157,30 @@ class TestEndToEnd:
             logger.handlers.clear()
         finally:
             os.chdir(original_cwd)
+
+
+class TestEndToEndPptx:
+    """T064: PPTX bronze → silver end-to-end traversal (no API key needed)."""
+
+    def test_single_pptx_bronze_silver(self, tmp_path: Path) -> None:
+        import shutil
+        from docmeld.bronze.processor import BronzeProcessor
+        from docmeld.silver.processor import SilverProcessor
+
+        src = Path(__file__).resolve().parents[3] / "samples" / "ppt" / "sample_pptx_basic.pptx"
+        if not src.exists():
+            pytest.skip("sample_pptx_basic.pptx not found")
+        shutil.copy(src, tmp_path / "deck.pptx")
+
+        bronze_result = BronzeProcessor().process_file(str(tmp_path / "deck.pptx"), backend="auto")
+        assert Path(bronze_result.output_path).exists()
+        with open(bronze_result.output_path) as f:
+            elements = json.load(f)
+        assert elements and all("type" in e and "page_no" in e for e in elements)
+
+        silver_result = SilverProcessor().process(bronze_result.output_path)
+        assert Path(silver_result.output_path).exists()
+        with open(silver_result.output_path) as f:
+            pages = [json.loads(line) for line in f if line.strip()]
+        assert pages
+        assert all(p["metadata"]["page_no"].startswith("page") for p in pages)

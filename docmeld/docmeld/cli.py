@@ -16,22 +16,22 @@ def main(args: list[str] | None = None) -> int:
 
     # process (all stages)
     p_all = subparsers.add_parser("process", help="Run full pipeline (bronze → silver → gold)")
-    p_all.add_argument("path", help="Path to PDF file or folder of PDFs")
+    p_all.add_argument("path", help="Path to a document/presentation file or folder (.pdf/.docx/.doc/.pptx/.ppt)")
     p_all.add_argument(
         "--backend",
-        choices=["pymupdf", "docling", "auto"],
+        choices=["pymupdf", "docling", "pptx", "soffice", "auto"],
         default="auto",
         help="Parsing backend (default: auto — detects format)",
     )
 
     # bronze
     p_bronze = subparsers.add_parser("bronze", help="Run bronze stage only (PDF → JSON)")
-    p_bronze.add_argument("path", help="Path to PDF file or folder of PDFs")
+    p_bronze.add_argument("path", help="Path to a document/presentation file or folder (.pdf/.docx/.doc/.pptx/.ppt)")
     p_bronze.add_argument(
         "--backend",
-        choices=["pymupdf", "docling", "auto"],
-        default="pymupdf",
-        help="PDF parsing backend (default: pymupdf)",
+        choices=["pymupdf", "docling", "pptx", "soffice", "auto"],
+        default="auto",
+        help="Parsing backend (default: auto — detects format)",
     )
 
     # silver
@@ -47,7 +47,7 @@ def main(args: list[str] | None = None) -> int:
     p_cat.add_argument("path", help="Path to folder of PDFs")
     p_cat.add_argument(
         "--backend",
-        choices=["pymupdf", "docling", "auto"],
+        choices=["pymupdf", "docling", "pptx", "soffice", "auto"],
         default="pymupdf",
         help="PDF parsing backend (default: pymupdf)",
     )
@@ -62,7 +62,7 @@ def main(args: list[str] | None = None) -> int:
     p_prd.add_argument("path", help="Path to a single PDF file")
     p_prd.add_argument(
         "--backend",
-        choices=["pymupdf", "docling", "auto"],
+        choices=["pymupdf", "docling", "pptx", "soffice", "auto"],
         default="pymupdf",
         help="PDF parsing backend (default: pymupdf)",
     )
@@ -72,7 +72,7 @@ def main(args: list[str] | None = None) -> int:
     p_wf.add_argument("path", help="Path to a single PDF file")
     p_wf.add_argument(
         "--backend",
-        choices=["pymupdf", "docling", "auto"],
+        choices=["pymupdf", "docling", "pptx", "soffice", "auto"],
         default="pymupdf",
         help="PDF parsing backend (default: pymupdf)",
     )
@@ -82,7 +82,7 @@ def main(args: list[str] | None = None) -> int:
     p_sk.add_argument("path", help="Path to a single PDF file")
     p_sk.add_argument(
         "--backend",
-        choices=["pymupdf", "docling", "auto"],
+        choices=["pymupdf", "docling", "pptx", "soffice", "auto"],
         default="pymupdf",
         help="PDF parsing backend (default: pymupdf)",
     )

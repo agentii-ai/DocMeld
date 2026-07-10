@@ -73,7 +73,7 @@ Rationale: The #1 complaint about existing tools (MinerU, Marker, Docling) is he
 All parsed documents MUST produce a single, consistent JSON element structure:
 
 - Every element MUST contain `type` (string) and `page_no` (integer)
-- Supported element types: `title`, `text`, `table`, `image`, `chart`, `formula`, `header`, `footer`, `footnote`, `endnote`
+- Supported element types: `title`, `text`, `table`, `image`, `chart`, `formula`, `header`, `footer`, `footnote`, `endnote`, `smartart`, `notes`, `group`, `comment`
 - `title` elements MUST include `level` (integer, 0-based) and `content` (string)
 - `text` elements MUST include `content` (string)
 - `table` elements MUST include `content` (markdown string) and `summary` (string)
@@ -82,6 +82,10 @@ All parsed documents MUST produce a single, consistent JSON element structure:
 - `formula` elements MUST include `content` (LaTeX string) and `formula_type`
 - `header` and `footer` elements MUST include `content` and `page_scope` (all/even/odd)
 - `footnote` and `endnote` elements MUST include `content` and `reference_id`
+- `smartart` elements MUST include `smartart_type` and `content` (with `image` fallback)
+- `notes` elements MUST include `content` (speaker notes attached to a slide)
+- `group` elements MUST include `child_count`; grouped children reference the group via `parent_id`
+- `comment` elements MUST include `content` and `author`
 - Element order in the list MUST reflect document reading order
 - The format MUST be documented with a JSON Schema and validated on output
 - New element types MAY be added in MINOR versions but existing types MUST NOT change shape in MINOR/PATCH versions
@@ -171,4 +175,4 @@ This constitution is the supreme authority for DocMeld development practices. Al
 - The plan-template Constitution Check gate MUST reference these principles
 - Complexity beyond what is specified here MUST be justified in writing
 
-**Version**: 1.0.0 | **Ratified**: 2026-03-12 | **Last Amended**: 2026-03-12
+**Version**: 1.1.0 | **Ratified**: 2026-03-12 | **Last Amended**: 2026-07-10

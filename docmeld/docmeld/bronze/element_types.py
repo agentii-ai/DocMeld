@@ -13,6 +13,7 @@ class TitleElement(BaseModel):
     page_no: int = Field(ge=1)
     element_id: str = ""
     parent_id: str = ""
+    hidden: bool = False
 
 
 class TextElement(BaseModel):
@@ -21,6 +22,7 @@ class TextElement(BaseModel):
     page_no: int = Field(ge=1)
     element_id: str = ""
     parent_id: str = ""
+    hidden: bool = False
 
 
 class TableElement(BaseModel):
@@ -31,6 +33,7 @@ class TableElement(BaseModel):
     element_id: str = ""
     parent_id: str = ""
     table_data: dict[str, Any] | None = None
+    hidden: bool = False
 
 
 class ImageElement(BaseModel):
@@ -43,6 +46,7 @@ class ImageElement(BaseModel):
     page_no: int = Field(ge=1)
     element_id: str = ""
     parent_id: str = ""
+    hidden: bool = False
 
 
 class ChartElement(BaseModel):
@@ -54,6 +58,7 @@ class ChartElement(BaseModel):
     page_no: int = Field(ge=1)
     element_id: str = ""
     parent_id: str = ""
+    hidden: bool = False
 
 
 class FormulaElement(BaseModel):
@@ -63,6 +68,7 @@ class FormulaElement(BaseModel):
     page_no: int = Field(ge=1)
     element_id: str = ""
     parent_id: str = ""
+    hidden: bool = False
 
 
 class HeaderElement(BaseModel):
@@ -72,6 +78,7 @@ class HeaderElement(BaseModel):
     page_no: int = Field(ge=1)
     element_id: str = ""
     parent_id: str = ""
+    hidden: bool = False
 
 
 class FooterElement(BaseModel):
@@ -81,6 +88,7 @@ class FooterElement(BaseModel):
     page_no: int = Field(ge=1)
     element_id: str = ""
     parent_id: str = ""
+    hidden: bool = False
 
 
 class FootnoteElement(BaseModel):
@@ -90,6 +98,7 @@ class FootnoteElement(BaseModel):
     page_no: int = Field(ge=1)
     element_id: str = ""
     parent_id: str = ""
+    hidden: bool = False
 
 
 class EndnoteElement(BaseModel):
@@ -99,6 +108,48 @@ class EndnoteElement(BaseModel):
     page_no: int = Field(ge=1)
     element_id: str = ""
     parent_id: str = ""
+    hidden: bool = False
+
+
+class SmartArtElement(BaseModel):
+    type: Literal["smartart"]
+    smartart_type: str
+    content: str = ""
+    image: str = ""
+    image_name: str = ""
+    page_no: int = Field(ge=1)
+    element_id: str = ""
+    parent_id: str = ""
+    hidden: bool = False
+
+
+class NotesElement(BaseModel):
+    type: Literal["notes"]
+    content: str = Field(min_length=1)
+    page_no: int = Field(ge=1)
+    element_id: str = ""
+    parent_id: str = ""
+    hidden: bool = False
+
+
+class GroupElement(BaseModel):
+    type: Literal["group"]
+    content: str = ""
+    child_count: int = Field(ge=0)
+    page_no: int = Field(ge=1)
+    element_id: str = ""
+    parent_id: str = ""
+    hidden: bool = False
+
+
+class CommentElement(BaseModel):
+    type: Literal["comment"]
+    content: str = Field(min_length=1)
+    author: str = ""
+    page_no: int = Field(ge=1)
+    element_id: str = ""
+    parent_id: str = ""
+    hidden: bool = False
 
 
 BronzeElement = (
@@ -106,6 +157,7 @@ BronzeElement = (
     | ChartElement | FormulaElement
     | HeaderElement | FooterElement
     | FootnoteElement | EndnoteElement
+    | SmartArtElement | NotesElement | GroupElement | CommentElement
 )
 
 
@@ -123,6 +175,10 @@ def parse_element(data: dict[str, Any]) -> BronzeElement:
         "footer": FooterElement,
         "footnote": FootnoteElement,
         "endnote": EndnoteElement,
+        "smartart": SmartArtElement,
+        "notes": NotesElement,
+        "group": GroupElement,
+        "comment": CommentElement,
     }
     model_cls = _type_map.get(element_type or "")
     if model_cls is None:

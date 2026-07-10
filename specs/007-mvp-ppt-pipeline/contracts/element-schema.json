@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://docmeld.github.io/schemas/element-schema.json",
+  "title": "DocMeld Bronze Element Schema (v3 — 14 element types)",
+  "description": "JSON Schema for DocMeld bronze-stage document elements. Covers all 14 element types: text, table, title, image, chart, formula, header, footer, footnote, endnote, smartart, notes, group, comment.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["type", "page_no"],
+    "properties": {
+      "type": {
+        "type": "string",
+        "enum": [
+          "text", "table", "title", "image",
+          "chart", "formula",
+          "header", "footer",
+          "footnote", "endnote",
+          "smartart", "notes", "group", "comment"
+        ]
+      },
+      "page_no": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "element_id": {
+        "type": "string",
+        "pattern": "^e_\\d{4}$"
+      },
+      "parent_id": {
+        "type": "string"
+      },
+      "hidden": {
+        "type": "boolean",
+        "default": false
+      }
+    },
+    "allOf": [
+      {"if": {"properties": {"type": {"const": "title"}}},"then": {"required": ["level", "content"],"properties": {"level": {"type": "integer", "minimum": 0, "maximum": 5},"content": {"type": "string", "minLength": 1}}}},
+      {"if": {"properties": {"type": {"const": "text"}}},"then": {"required": ["content"],"properties": {"content": {"type": "string", "minLength": 1}}}},
+      {"if": {"properties": {"type": {"const": "table"}}},"then": {"required": ["content", "summary"],"properties": {"content": {"type": "string", "minLength": 1},"summary": {"type": "string"},"table_data": {"type": "object"}}}},
+      {"if": {"properties": {"type": {"const": "image"}}},"then": {"required": ["image_name", "image", "image_id", "bbox"],"properties": {"image_name": {"type": "string", "minLength": 1},"content": {"type": "string"},"image": {"type": "string"},"image_id": {"type": "string"},"bbox": {"type": "array", "items": {"type": "number"}, "minItems": 4, "maxItems": 4}}}},
+      {"if": {"properties": {"type": {"const": "chart"}}},"then": {"required": ["chart_type", "image"],"properties": {"chart_type": {"type": "string","enum": ["bar", "line", "pie", "scatter", "area", "radar", "doughnut", "bubble", "unknown"]},"content": {"type": "string"},"image": {"type": "string"},"image_name": {"type": "string"}}}},
+      {"if": {"properties": {"type": {"const": "formula"}}},"then": {"required": ["content"],"properties": {"content": {"type": "string", "minLength": 1},"formula_type": {"type": "string","enum": ["MathType", "OMML", "LaTeX", "EquationEditor","Unknown"]}}}},
+      {"if": {"properties": {"type": {"const": "header"}}},"then": {"required": ["content", "page_scope"],"properties": {"content": {"type": "string", "minLength": 1},"page_scope": {"type": "string", "enum": ["all", "even", "odd"]}}}},
+      {"if": {"properties": {"type": {"const": "footer"}}},"then": {"required": ["content", "page_scope"],"properties": {"content": {"type": "string", "minLength": 1},"page_scope": {"type": "string", "enum": ["all", "even", "odd"]}}}},
+      {"if": {"properties": {"type": {"const": "footnote"}}},"then": {"required": ["content", "reference_id"],"properties": {"content": {"type": "string", "minLength": 1},"reference_id": {"type": "string", "minLength": 1}}}},
+      {"if": {"properties": {"type": {"const": "endnote"}}},"then": {"required": ["content", "reference_id"],"properties": {"content": {"type": "string", "minLength": 1},"reference_id": {"type": "string", "minLength": 1}}}},
+      {"if": {"properties": {"type": {"const": "smartart"}}},"then": {"required": ["smartart_type"],"properties": {"smartart_type": {"type": "string","enum": ["process", "cycle", "hierarchy", "relationship", "pyramid", "list", "unknown"]},"content": {"type": "string"},"image": {"type": "string"},"image_name": {"type": "string"}}}},
+      {"if": {"properties": {"type": {"const": "notes"}}},"then": {"required": ["content"],"properties": {"content": {"type": "string", "minLength": 1}}}},
+      {"if": {"properties": {"type": {"const": "group"}}},"then": {"required": ["child_count"],"properties": {"content": {"type": "string"},"child_count": {"type": "integer", "minimum": 1}}}},
+      {"if": {"properties": {"type": {"const": "comment"}}},"then": {"required": ["content"],"properties": {"content": {"type": "string", "minLength": 1},"author": {"type": "string"}}}}
+    ]
+  }
+}

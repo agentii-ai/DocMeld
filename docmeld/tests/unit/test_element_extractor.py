@@ -142,9 +142,9 @@ class TestAssignElementIds:
             {"type": "table", "content": "C", "summary": "", "page_no": 1},
         ]
         _assign_element_ids(elements)
-        assert elements[0]["element_id"] == "e_001"
-        assert elements[1]["element_id"] == "e_002"
-        assert elements[2]["element_id"] == "e_003"
+        assert elements[0]["element_id"] == "e_0001"
+        assert elements[1]["element_id"] == "e_0002"
+        assert elements[2]["element_id"] == "e_0003"
 
     def test_empty_list(self) -> None:
         from docmeld.bronze.element_extractor import _assign_element_ids
@@ -165,7 +165,7 @@ class TestAssignParentIds:
         _assign_element_ids(elements)
         _assign_parent_ids(elements)
         assert elements[0]["parent_id"] == ""  # top-level title has no parent
-        assert elements[1]["parent_id"] == "e_001"
+        assert elements[1]["parent_id"] == "e_0001"
 
     def test_nested_titles(self) -> None:
         from docmeld.bronze.element_extractor import _assign_element_ids, _assign_parent_ids
@@ -180,10 +180,10 @@ class TestAssignParentIds:
         _assign_element_ids(elements)
         _assign_parent_ids(elements)
         assert elements[0]["parent_id"] == ""       # H1 -> no parent
-        assert elements[1]["parent_id"] == "e_001"  # H2 -> H1
-        assert elements[2]["parent_id"] == "e_002"  # text -> H2 (deepest)
-        assert elements[3]["parent_id"] == "e_002"  # H3 -> H2
-        assert elements[4]["parent_id"] == "e_004"  # text -> H3
+        assert elements[1]["parent_id"] == "e_0001"  # H2 -> H1
+        assert elements[2]["parent_id"] == "e_0002"  # text -> H2 (deepest)
+        assert elements[3]["parent_id"] == "e_0002"  # H3 -> H2
+        assert elements[4]["parent_id"] == "e_0004"  # text -> H3
 
     def test_sibling_titles_reset_deeper(self) -> None:
         from docmeld.bronze.element_extractor import _assign_element_ids, _assign_parent_ids
@@ -197,7 +197,7 @@ class TestAssignParentIds:
         _assign_element_ids(elements)
         _assign_parent_ids(elements)
         assert elements[2]["parent_id"] == ""       # H1b -> no parent (level 0)
-        assert elements[3]["parent_id"] == "e_003"  # text -> H1b (H2a was cleared)
+        assert elements[3]["parent_id"] == "e_0003"  # text -> H1b (H2a was cleared)
 
     def test_no_titles(self) -> None:
         from docmeld.bronze.element_extractor import _assign_element_ids, _assign_parent_ids

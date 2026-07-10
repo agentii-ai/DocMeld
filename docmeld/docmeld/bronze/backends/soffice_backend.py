@@ -12,17 +12,21 @@ logger = logging.getLogger("docmeld")
 
 
 class SofficeBackend:
-    """Extract elements from legacy .doc files via LibreOffice → PDF → PyMuPDF.
+    """Extract elements from legacy .doc/.ppt files via LibreOffice → PDF → PyMuPDF.
 
-    Converts .doc to PDF using soffice --headless, then delegates to the
-    existing PyMuPDF backend. Deletes the intermediate PDF after extraction.
+    Converts the source document to PDF using soffice --headless, then delegates
+    to the existing PyMuPDF backend. Deletes the intermediate PDF after extraction.
+    Element richness is limited to what PDF extraction provides (text, table,
+    title, image).
     """
 
+    SUPPORTED_SUFFIXES = {".doc", ".ppt"}
+
     def extract_elements(self, doc_path: str, output_dir: str) -> List[Dict[str, Any]]:
-        """Convert .doc to PDF and extract elements via PyMuPDF.
+        """Convert a legacy binary document to PDF and extract elements via PyMuPDF.
 
         Args:
-            doc_path: Path to the .doc file.
+            doc_path: Path to the .doc or .ppt file.
             output_dir: Directory for outputs (intermediate PDF goes here).
 
         Returns:
@@ -33,14 +37,14 @@ class SofficeBackend:
         if not soffice:
             raise RuntimeError(
                 "LibreOffice (soffice) is not installed or not on PATH. "
-                "Install LibreOffice to process .doc files. "
+                "Install LibreOffice to process .doc/.ppt files. "
                 "See https://www.libreoffice.org/download/"
             )
 
         doc_path_obj = Path(doc_path)
-        if not doc_path_obj.suffix.lower() == ".doc":
+        if doc_path_obj.suffix.lower() not in self.SUPPORTED_SUFFIXES:
             raise ValueError(
-                f"SofficeBackend only supports .doc files, got: {doc_path_obj.suffix}"
+                f"SofficeBackend only supports .doc/.ppt files, got: {doc_path_obj.suffix}"
             )
 
         # Convert to PDF in a temp directory
