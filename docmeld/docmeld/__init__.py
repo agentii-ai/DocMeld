@@ -1,6 +1,6 @@
 """DocMeld - Lightweight PDF to agent-ready knowledge pipeline."""
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 
 # Lazy import to avoid side effects on import

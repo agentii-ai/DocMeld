@@ -17,12 +17,14 @@ class TestLoadEnv:
     def test_missing_api_key_raises(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         from docmeld.utils.env_loader import load_env
 
-        monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+        # Clear all known API keys from the environment
+        for key in ("DEEPSEEK_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "LLM_API_KEY"):
+            monkeypatch.delenv(key, raising=False)
 
         env_file = tmp_path / ".env.local"
         env_file.write_text("OTHER_VAR=value\n")
 
-        with pytest.raises(ValueError, match="DEEPSEEK_API_KEY"):
+        with pytest.raises(ValueError, match="No API key found"):
             load_env(env_path=str(env_file), require_api_key=True)
 
     def test_optional_endpoint(self, tmp_path: Path) -> None:
@@ -42,3 +44,25 @@ class TestLoadEnv:
 
         result = load_env(env_path=str(tmp_path / "nonexistent"), require_api_key=False)
         assert isinstance(result, dict)
+
+    def test_recognizes_openai_key(self, tmp_path: Path) -> None:
+        from docmeld.utils.env_loader import load_env
+
+        env_file = tmp_path / ".env.local"
+        env_file.write_text("OPENAI_API_KEY=sk-openai-test\n")
+
+        result = load_env(env_path=str(env_file))
+        assert result["OPENAI_API_KEY"] == "sk-openai-test"
+
+    def test_require_any_known_key(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        from docmeld.utils.env_loader import load_env
+
+        # Clear all known keys
+        for key in ("DEEPSEEK_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "LLM_API_KEY"):
+            monkeypatch.delenv(key, raising=False)
+
+        env_file = tmp_path / ".env.local"
+        env_file.write_text("OPENAI_API_KEY=sk-test\n")
+
+        result = load_env(env_path=str(env_file), require_api_key=True)
+        assert "OPENAI_API_KEY" in result

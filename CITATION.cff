@@ -12,7 +12,7 @@ authors:
 repository-code: "https://github.com/agentii-ai/DocMeld"
 url: "https://github.com/agentii-ai/DocMeld"
 license: MIT
-version: "0.3.0"
+version: "0.3.1"
 keywords:
   - pdf
   - docx

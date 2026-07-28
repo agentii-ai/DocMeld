@@ -13,7 +13,7 @@
   <a href="https://mypy-lang.org/"><img src="https://img.shields.io/badge/type%20checked-mypy-blue.svg" alt="Checked with mypy"></a>
   <img src="https://img.shields.io/badge/tests-315%20passed-brightgreen.svg" alt="Tests: 315 passed">
   <img src="https://img.shields.io/badge/coverage-78%25-green.svg" alt="Coverage: 78%">
-  <a href="https://pypi.org/project/docmeld/"><img src="https://img.shields.io/badge/pypi-0.3.0-blue.svg" alt="PyPI: 0.3.0"></a>
+  <a href="https://pypi.org/project/docmeld/"><img src="https://img.shields.io/badge/pypi-0.3.1-blue.svg" alt="PyPI: 0.3.1"></a>
 </p>
 
 <p align="center">
@@ -195,7 +195,7 @@ Adds semantic descriptions and keywords to each page using DeepSeek-chat, with e
 
 The gold stage is optional — bronze and silver run fully offline with zero API calls.
 
-### Knowledge Generation (v0.3.0+)
+### Knowledge Generation (v0.3.1+)
 
 Beyond per-page enrichment, DocMeld can generate structured, agent-ready artifacts from document content:
 

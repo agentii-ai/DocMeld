@@ -30,7 +30,7 @@ body:
     attributes:
       label: DocMeld version
       description: Output of `pip show docmeld` or the git commit.
-      placeholder: "0.3.0"
+      placeholder: "0.3.1"
     validations:
       required: true
   - type: dropdown

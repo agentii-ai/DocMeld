@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-07-28
+
 ### Changed
 - **Repository hygiene**: CI workflows relocated to repo root (`.github/workflows/`); OIDC trusted publishing for PyPI.
 - **Packaging**: Personal batch scripts moved from the importable package to `docmeld/scripts/` (not shipped in wheel).
@@ -27,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `test_parser.py` (3 tests) — `process_all` failure semantics + provider injection.
 - Subpackage `__init__.py` exports for `generate_prd`, `generate_workflow`, `generate_skills`, `categorize_papers`, `LLMProvider`.
 - Both READMEs updated with accurate badges (315 tests / 78% coverage), full CLI reference, Knowledge Generation section, Python API with provider seam, and backends table (auto/pptx/soffice).
+- Multi-provider API key placeholders in `.env.local.template` (OpenAI, Anthropic, custom).
 
 ### Fixed
 - All repo URLs unified to `github.com/agentii-ai/DocMeld`.
@@ -76,7 +79,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Timestamped logging, `.env.local` support, cross-platform (macOS/Linux/Windows).
 - 109 tests, 82% code coverage.
 
-[Unreleased]: https://github.com/agentii-ai/DocMeld/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/agentii-ai/DocMeld/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/agentii-ai/DocMeld/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/agentii-ai/DocMeld/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/agentii-ai/DocMeld/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/agentii-ai/DocMeld/releases/tag/v0.1.0

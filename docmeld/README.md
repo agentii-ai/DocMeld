@@ -194,7 +194,7 @@ Adds semantic descriptions and keywords to each page using DeepSeek-chat, with e
 
 The gold stage is optional — bronze and silver run fully offline with zero API calls.
 
-### Knowledge Generation (v0.3.0+)
+### Knowledge Generation (v0.3.1+)
 
 Beyond per-page enrichment, DocMeld can generate structured, agent-ready artifacts from document content using an LLM provider:
 
