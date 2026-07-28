@@ -1,15 +1,15 @@
 """Environment variable loader with .env.local support."""
+
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Optional
 
 from dotenv import load_dotenv
 
 
 def load_env(
-    env_path: Optional[str] = None,
+    env_path: str | None = None,
     require_api_key: bool = False,
 ) -> dict[str, str]:
     """Load environment variables from .env.local file.
@@ -38,8 +38,7 @@ def load_env(
         result["DEEPSEEK_API_ENDPOINT"] = endpoint
 
     if require_api_key and "DEEPSEEK_API_KEY" not in result:
-        raise ValueError(
-            "DEEPSEEK_API_KEY not found. Set it in .env.local or as an environment variable."
-        )
+        msg = "DEEPSEEK_API_KEY not found. Set it in .env.local or as an environment variable."
+        raise ValueError(msg)
 
     return result

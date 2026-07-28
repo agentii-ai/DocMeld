@@ -8,9 +8,9 @@ Orchestrates the complete workflow for a folder of PDFs:
 5. Reorganize into category subdirectories
 
 Usage:
-    cd /Users/frank/A/DocMeld
-    source docmeld/venv/bin/activate
-    python -m docmeld.batch_pipeline "/path/to/folder" --workers 10
+    cd /Users/frank/A/DocMeld/docmeld
+    source venv/bin/activate
+    python scripts/batch_pipeline.py "/path/to/folder" --workers 10
 """
 from __future__ import annotations
 
@@ -21,9 +21,9 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Dict
 
-from docmeld.bronze.filename_sanitizer import calculate_hash, get_output_name
+from docmeld.bronze.filename_sanitizer import get_output_name
 from docmeld.bronze.processor import BronzeProcessor
 from docmeld.categorize.aggregator import aggregate_paper_metadata, generate_article_md
 from docmeld.categorize.categorizer import categorize_papers
@@ -31,9 +31,16 @@ from docmeld.categorize.index_writer import write_category_index
 from docmeld.categorize.reorganizer import reorganize_by_category
 from docmeld.gold.deepseek_client import DeepSeekClient, call_with_retry
 from docmeld.silver.processor import SilverProcessor
-from docmeld.summarize import SUMMARIZE_PROMPT, _call_summarize_api, assemble_paper_content
 from docmeld.utils.env_loader import load_env
 from docmeld.utils.logging import setup_logging
+
+# summarize.py is a sibling script in this folder, not part of the installed package.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from summarize import (
+    SUMMARIZE_PROMPT,
+    _call_summarize_api,
+    assemble_paper_content,
+)
 
 logger = logging.getLogger("docmeld")
 

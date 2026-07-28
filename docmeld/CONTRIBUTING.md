@@ -14,8 +14,8 @@ Thank you for your interest in contributing to DocMeld! This document provides g
 1. **Fork and clone the repository**
 
 ```bash
-git clone https://github.com/[your-username]/docmeld.git
-cd docmeld
+git clone https://github.com/agentii-ai/DocMeld.git
+cd DocMeld/docmeld
 ```
 
 2. **Create a virtual environment**

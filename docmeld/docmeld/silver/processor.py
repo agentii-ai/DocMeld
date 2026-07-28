@@ -1,4 +1,5 @@
 """Silver stage processor - bronze JSON to page-by-page JSONL."""
+
 from __future__ import annotations
 
 import json
@@ -31,7 +32,8 @@ class SilverProcessor:
         """
         json_path = Path(bronze_json_path)
         if not json_path.exists():
-            raise FileNotFoundError(f"Bronze JSON not found: {bronze_json_path}")
+            msg = f"Bronze JSON not found: {bronze_json_path}"
+            raise FileNotFoundError(msg)
 
         # Output JSONL goes in the same directory
         jsonl_path = json_path.with_suffix(".jsonl")
@@ -68,7 +70,11 @@ class SilverProcessor:
                 break
             # 2. Try stripping hash suffix: {name}_{hash6} → {name}
             parts = json_stem.rsplit("_", 1)
-            if len(parts) == 2 and len(parts[1]) == 6 and all(c in "0123456789abcdef" for c in parts[1]):
+            if (
+                len(parts) == 2
+                and len(parts[1]) == 6
+                and all(c in "0123456789abcdef" for c in parts[1])
+            ):
                 base_name = parts[0]
                 candidate = json_dir.parent / (base_name + ext)
                 if candidate.exists():
@@ -84,9 +90,7 @@ class SilverProcessor:
                 page_elements = pages[page_no]
 
                 # Render page content
-                page_content, counters = render_page(
-                    page_elements, title_tracker, counters
-                )
+                page_content, counters = render_page(page_elements, title_tracker, counters)
 
                 # Build metadata
                 metadata = {

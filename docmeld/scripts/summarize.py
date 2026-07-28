@@ -3,9 +3,9 @@
 Supports concurrent API calls for faster processing.
 
 Usage:
-    cd /Users/frank/A/DocMeld
-    source docmeld/venv/bin/activate
-    python -m docmeld.summarize "/path/to/folder" --workers 10
+    cd /Users/frank/A/DocMeld/docmeld
+    source venv/bin/activate
+    python scripts/summarize.py "/path/to/folder" --workers 10
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from docmeld.gold.deepseek_client import DeepSeekClient, call_with_retry
 from docmeld.utils.env_loader import load_env

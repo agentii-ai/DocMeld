@@ -1,9 +1,13 @@
 """Pydantic models for document elements extracted from documents."""
+
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Union, cast
 
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    from typing_extensions import TypeAlias
 
 
 class TitleElement(BaseModel):
@@ -152,19 +156,28 @@ class CommentElement(BaseModel):
     hidden: bool = False
 
 
-BronzeElement = (
-    TitleElement | TextElement | TableElement | ImageElement
-    | ChartElement | FormulaElement
-    | HeaderElement | FooterElement
-    | FootnoteElement | EndnoteElement
-    | SmartArtElement | NotesElement | GroupElement | CommentElement
-)
+BronzeElement: TypeAlias = Union[
+    TitleElement,
+    TextElement,
+    TableElement,
+    ImageElement,
+    ChartElement,
+    FormulaElement,
+    HeaderElement,
+    FooterElement,
+    FootnoteElement,
+    EndnoteElement,
+    SmartArtElement,
+    NotesElement,
+    GroupElement,
+    CommentElement,
+]
 
 
 def parse_element(data: dict[str, Any]) -> BronzeElement:
     """Parse a raw dict into the appropriate element model."""
     element_type = data.get("type")
-    _type_map: dict[str, type[BronzeElement]] = {
+    _type_map: dict[str, type[BaseModel]] = {
         "title": TitleElement,
         "text": TextElement,
         "table": TableElement,
@@ -184,4 +197,4 @@ def parse_element(data: dict[str, Any]) -> BronzeElement:
     if model_cls is None:
         msg = f"Unknown element type: {element_type}"
         raise ValueError(msg)
-    return model_cls(**data)
+    return cast("BronzeElement", model_cls(**data))

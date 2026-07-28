@@ -1,8 +1,9 @@
 """Progress indicator utility for pipeline operations."""
+
 from __future__ import annotations
 
 import sys
-from typing import IO, Optional
+from typing import IO
 
 
 class ProgressTracker:
@@ -13,7 +14,7 @@ class ProgressTracker:
         current: int,
         total: int,
         message: str,
-        output: Optional[IO[str]] = None,
+        output: IO[str] | None = None,
     ) -> None:
         """Print a progress update.
 

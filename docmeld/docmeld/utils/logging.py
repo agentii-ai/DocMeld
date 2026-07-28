@@ -1,8 +1,9 @@
 """Timestamped logging utility for DocMeld pipeline."""
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -15,7 +16,7 @@ def setup_logging(log_dir: str | None = None) -> logging.Logger:
     if log_dir is None:
         log_dir = str(Path.cwd())
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
     log_filename = f"docmeld_{timestamp}.log"
     log_path = Path(log_dir) / log_filename
 

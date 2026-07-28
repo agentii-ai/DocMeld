@@ -1,19 +1,29 @@
-"""Summarize all RL papers in /Users/frank/Documents/AI/SynthData/RL."""
+"""Batch summarize research papers into structured Chinese Markdown notes.
+
+Walks a folder of already-processed papers (each PDF has a sibling
+``<name>_<hash>/`` output dir containing silver ``.jsonl``), assembles the page
+content, and writes ``<pdf_stem>_summary.md`` next to each PDF via DeepSeek-chat.
+
+Usage:
+    cd /Users/frank/A/DocMeld/docmeld
+    source venv/bin/activate
+    python scripts/summarize_rl.py "/path/to/papers" --workers 5
+"""
 from __future__ import annotations
 
+import argparse
 import json
-import sys
 import time
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
-sys.path.insert(0, "/Users/frank/A/DocMeld/docmeld")
+from langchain_deepseek import ChatDeepSeek
 
 from docmeld.gold.deepseek_client import DeepSeekClient, call_with_retry
 from docmeld.utils.env_loader import load_env
-from langchain_deepseek import ChatDeepSeek
 
 MAX_CONTENT_CHARS = 200000
+DEFAULT_WORKERS = 5
 
 SUMMARIZE_PROMPT = """你是一位资深AI研究员，擅长解读前沿论文并输出结构化中文总结。你对数据工程有极强的敏感度，会格外关注论文中所有与数据相关的细节。
 
@@ -41,9 +51,6 @@ SUMMARIZE_PROMPT = """你是一位资深AI研究员，擅长解读前沿论文�
 
 论文内容：
 """
-
-BASE = Path("/Users/frank/Documents/AI/SynthData/RL")
-
 
 def assemble_content(jsonl_path: Path) -> str:
     pages = []
@@ -96,10 +103,10 @@ def summarize_one(client: DeepSeekClient, pdf_path: Path, jsonl_path: Path) -> t
         return pdf_path.name, False, str(e)
 
 
-def build_tasks() -> list[tuple[Path, Path]]:
+def build_tasks(base: Path) -> list[tuple[Path, Path]]:
     from docmeld.bronze.filename_sanitizer import calculate_hash
     tasks = []
-    for jsonl in sorted(BASE.rglob("*.jsonl")):
+    for jsonl in sorted(base.rglob("*.jsonl")):
         if "_gold" in jsonl.name:
             continue
         subdir = jsonl.parent
@@ -118,18 +125,32 @@ def build_tasks() -> list[tuple[Path, Path]]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("folder", help="Path to the folder of processed papers")
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=DEFAULT_WORKERS,
+        help=f"Number of concurrent workers (default: {DEFAULT_WORKERS})",
+    )
+    args = parser.parse_args()
+
+    base = Path(args.folder)
+    if not base.is_dir():
+        parser.error(f"folder not found: {base}")
+
     env = load_env(require_api_key=True)
     client = DeepSeekClient(
         api_key=env["DEEPSEEK_API_KEY"],
         endpoint=env.get("DEEPSEEK_API_ENDPOINT"),
     )
 
-    tasks = build_tasks()
-    print(f"Summarizing {len(tasks)} papers with 5 workers...", flush=True)
+    tasks = build_tasks(base)
+    print(f"Summarizing {len(tasks)} papers with {args.workers} workers...", flush=True)
     start = time.time()
     success = failed = 0
 
-    with ThreadPoolExecutor(max_workers=5) as pool:
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
         futures = {pool.submit(summarize_one, client, pdf, jsonl): pdf for pdf, jsonl in tasks}
         for future in as_completed(futures):
             name, ok, info = future.result()

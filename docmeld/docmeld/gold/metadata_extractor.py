@@ -1,21 +1,22 @@
-"""Metadata extractor for gold stage - wraps DeepSeek client."""
+"""Metadata extractor for gold stage - LLMProvider-agnostic."""
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
-from docmeld.gold.deepseek_client import DeepSeekClient
+from docmeld.gold.provider import LLMProvider
 
 logger = logging.getLogger("docmeld")
 
 
 class MetadataExtractor:
-    """Extracts description and keywords from page content using DeepSeek."""
+    """Extracts description and keywords from page content using an LLMProvider."""
 
-    def __init__(self, client: DeepSeekClient) -> None:
+    def __init__(self, client: LLMProvider) -> None:
         self.client = client
 
-    def extract(self, page_content: str) -> Dict[str, Any]:
+    def extract(self, page_content: str) -> dict[str, Any]:
         """Extract metadata from page content.
 
         Args:

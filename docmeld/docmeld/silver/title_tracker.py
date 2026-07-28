@@ -1,7 +1,6 @@
 """Title hierarchy tracker for silver stage processing."""
-from __future__ import annotations
 
-from typing import List, Tuple
+from __future__ import annotations
 
 
 class TitleTracker:
@@ -13,7 +12,7 @@ class TitleTracker:
     """
 
     def __init__(self) -> None:
-        self.stack: List[Tuple[int, str]] = []
+        self.stack: list[tuple[int, str]] = []
 
     def update(self, level: int, content: str) -> None:
         """Update the title hierarchy with a new title.

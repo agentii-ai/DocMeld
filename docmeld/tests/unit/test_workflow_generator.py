@@ -24,7 +24,7 @@ class TestWorkflowGenerator:
         ])
 
         mock_client = MagicMock()
-        mock_client.generate_prd.return_value = (
+        mock_client.generate.return_value = (
             "## Prerequisites\n- Python 3.9+\n- GPU with 8GB VRAM\n\n"
             "## Steps\n1. Install dependencies\n2. Prepare dataset\n3. Run training\n\n"
             "## Decision Points\n- Choose batch size based on GPU memory\n\n"
@@ -38,7 +38,7 @@ class TestWorkflowGenerator:
         assert result.sections == 5
         assert result.source_pdf == "test.pdf"
         assert not result.skipped
-        mock_client.generate_prd.assert_called_once()
+        mock_client.generate.assert_called_once()
 
     def test_idempotency_skips_existing(self, tmp_path: Path) -> None:
         from docmeld.workflow.generator import generate_workflow
@@ -60,7 +60,7 @@ class TestWorkflowGenerator:
 
         assert result.skipped
         assert result.sections == 5
-        mock_client.generate_prd.assert_not_called()
+        mock_client.generate.assert_not_called()
 
     def test_raises_on_empty_content(self, tmp_path: Path) -> None:
         from docmeld.workflow.generator import generate_workflow
@@ -81,7 +81,7 @@ class TestWorkflowGenerator:
         ])
 
         mock_client = MagicMock()
-        mock_client.generate_prd.side_effect = RuntimeError("API down")
+        mock_client.generate.side_effect = RuntimeError("API down")
 
         wf_path = tmp_path / "paper_abc_workflow.md"
         with pytest.raises(RuntimeError):

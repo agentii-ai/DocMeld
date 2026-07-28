@@ -1,4 +1,5 @@
 """Filename sanitization and MD5 hashing for PDF files."""
+
 from __future__ import annotations
 
 import hashlib

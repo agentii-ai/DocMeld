@@ -23,7 +23,7 @@ class TestSkillsGenerator:
         ])
 
         mock_client = MagicMock()
-        mock_client.generate_prd.return_value = json.dumps({
+        mock_client.generate.return_value = json.dumps({
             "skills": [
                 {
                     "title": "Write Tests First",
@@ -69,7 +69,7 @@ class TestSkillsGenerator:
 
         assert result.skipped
         assert result.skill_count == 1
-        mock_client.generate_prd.assert_not_called()
+        mock_client.generate.assert_not_called()
 
     def test_raises_on_empty_content(self, tmp_path: Path) -> None:
         from docmeld.skills.generator import generate_skills
@@ -88,7 +88,7 @@ class TestSkillsGenerator:
         self._write_silver_jsonl(jsonl, [{"metadata": {}, "page_content": "content"}])
 
         mock_client = MagicMock()
-        mock_client.generate_prd.return_value = '{"skills": []}'
+        mock_client.generate.return_value = '{"skills": []}'
 
         with pytest.raises(ValueError, match="No skills could be extracted"):
             generate_skills(str(jsonl), mock_client)
@@ -100,7 +100,7 @@ class TestSkillsGenerator:
         self._write_silver_jsonl(jsonl, [{"metadata": {}, "page_content": "content"}])
 
         mock_client = MagicMock()
-        mock_client.generate_prd.side_effect = RuntimeError("API down")
+        mock_client.generate.side_effect = RuntimeError("API down")
 
         skills_dir = tmp_path / "_skills"
         with pytest.raises(RuntimeError):

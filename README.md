@@ -11,8 +11,8 @@
   <a href="https://github.com/psf/black"><img src="https://img.shields.io/badge/code%20style-black-000000.svg" alt="Code style: black"></a>
   <a href="https://docs.astral.sh/ruff/"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
   <a href="https://mypy-lang.org/"><img src="https://img.shields.io/badge/type%20checked-mypy-blue.svg" alt="Checked with mypy"></a>
-  <img src="https://img.shields.io/badge/tests-309%20passed-brightgreen.svg" alt="Tests: 309 passed">
-  <img src="https://img.shields.io/badge/coverage-80%25-green.svg" alt="Coverage: 80%">
+  <img src="https://img.shields.io/badge/tests-315%20passed-brightgreen.svg" alt="Tests: 315 passed">
+  <img src="https://img.shields.io/badge/coverage-78%25-green.svg" alt="Coverage: 78%">
   <a href="https://pypi.org/project/docmeld/"><img src="https://img.shields.io/badge/pypi-0.3.0-blue.svg" alt="PyPI: 0.3.0"></a>
 </p>
 
@@ -195,6 +195,19 @@ Adds semantic descriptions and keywords to each page using DeepSeek-chat, with e
 
 The gold stage is optional — bronze and silver run fully offline with zero API calls.
 
+### Knowledge Generation (v0.3.0+)
+
+Beyond per-page enrichment, DocMeld can generate structured, agent-ready artifacts from document content:
+
+| Feature | CLI | Python API | Output |
+|---------|-----|-----------|--------|
+| **Categorize** | `docmeld categorize papers/` | `parser.process_categorize()` | Topic clusters + `categories.json` |
+| **PRD Generator** | `docmeld prd paper.pdf` | `parser.process_prd()` | Product Requirements Document |
+| **Workflow** | `docmeld workflow paper.pdf` | `parser.process_workflow()` | Step-by-step implementation workflow |
+| **Skills** | `docmeld skills book.pdf` | `parser.process_skills()` | Claude Code skill files |
+
+All four support swappable LLM backends via the `LLMProvider` Protocol (see Python API).
+
 ## Output Structure
 
 After processing `research_paper.pdf`:
@@ -301,6 +314,39 @@ for table in tables:
     print(f"Table: {len(rows)} rows × {len(headers)} cols")
 ```
 
+### Knowledge Generation
+
+```python
+# Categorize papers into topic clusters
+parser = DocMeldParser("/path/to/papers/")
+result = parser.process_categorize(reorganize=False)
+
+# Generate a PRD from a research paper
+prd = parser.process_prd()
+
+# Extract a workflow
+wf = parser.process_workflow()
+
+# Extract Claude Code skills from a book
+skills = parser.process_skills()
+```
+
+### Swappable LLM Provider
+
+```python
+from docmeld.gold.provider import LLMProvider
+
+class MyProvider:
+    def extract_metadata(self, content): ...
+    def generate(self, prompt): ...
+    def categorize(self, prompt): ...
+
+parser = DocMeldParser("paper.pdf", provider=MyProvider())
+prd = parser.process_prd()  # uses your provider, not DeepSeek
+```
+
+When no provider is given, a `DeepSeekClient` is constructed from environment variables — behavior is unchanged.
+
 ### Result Models
 
 All pipeline stages return typed Pydantic models:
@@ -310,6 +356,10 @@ BronzeResult(output_path, output_dir, element_count, page_count, skipped)
 SilverResult(output_path, page_count, skipped)
 GoldResult(output_path, pages_enriched, pages_failed, skipped)
 ProcessingResult(total_files, successful, failed, failures, processing_time_seconds, ...)
+CategorizeResult(index_path, total_papers, total_categories, papers_failed, reorganized)
+PrdResult(output_path, sections, source_pdf, skipped)
+WorkflowResult(output_path, sections, source_pdf, skipped)
+SkillsResult(output_dir, skill_count, source_pdf, skipped)
 ```
 
 ## CLI Reference
@@ -328,6 +378,13 @@ docmeld gold paper_a3f5c2/paper_a3f5c2.jsonl     # JSONL → enriched JSONL
 docmeld bronze report.docx --backend docling
 docmeld bronze deck.pptx   --backend pptx
 docmeld process paper.pdf  --backend auto         # default — detects format
+
+# Knowledge Generation (requires DEEPSEEK_API_KEY)
+docmeld categorize /path/to/papers/               # Topic clustering → categories.json
+docmeld categorize /path/to/papers/ --reorganize  # Move files into category folders
+docmeld prd paper.pdf                             # Generate Product Requirements Document
+docmeld workflow paper.pdf                        # Extract step-by-step workflow
+docmeld skills book.pdf                           # Extract Claude Code skills
 ```
 
 ## Configuration
@@ -383,10 +440,11 @@ Element types are validated at creation time. All 14 types share `type`, `page_n
 - [x] DOCX support (Docling backend)
 - [x] PPTX / PPT support (python-pptx + LibreOffice bridge)
 - [x] Rich element types (chart, formula, SmartArt, notes, comments, groups)
-- [ ] Research paper batch categorization
-- [ ] Paper-to-PRD generation
-- [ ] Paper-to-workflow extraction
-- [ ] Book-to-Claude-Skills generation
+- [x] Research paper batch categorization + topic clustering
+- [x] Paper-to-PRD generation
+- [x] Paper-to-workflow extraction
+- [x] Book-to-Claude-Skills generation
+- [x] Swappable LLM provider
 - [ ] OCR for scanned PDFs (`pip install docmeld[ocr]`)
 - [ ] Agent prompt generation
 - [ ] LangChain / LlamaIndex integration
@@ -396,7 +454,7 @@ Element types are validated at creation time. All 14 types share `type`, `page_n
 ### Setup
 
 ```bash
-git clone https://github.com/[username]/docmeld.git
+git clone https://github.com/agentii-ai/docmeld.git
 cd docmeld
 python3 -m venv venv
 source venv/bin/activate
@@ -406,7 +464,7 @@ pip install -e ".[dev]"
 ### Quality Gates
 
 ```bash
-pytest tests/ -v --cov=docmeld       # 309 tests, 80% core coverage
+pytest tests/ -v --cov=docmeld       # 315 tests, 78% coverage
 ruff check docmeld/                   # Linting
 black --check docmeld/                # Formatting
 mypy docmeld/                         # Strict type checking
@@ -438,12 +496,21 @@ docmeld/
 │   │   └── processor.py            # Silver orchestrator
 │   ├── gold/
 │   │   ├── deepseek_client.py       # API client + retry logic
+│   │   ├── provider.py              # LLMProvider Protocol (swappable)
 │   │   ├── metadata_extractor.py    # Content → description + keywords
 │   │   └── processor.py            # Gold orchestrator
+│   ├── categorize/                  # Topic clustering (categorize)
+│   ├── prd/                         # PRD generation (prd)
+│   ├── workflow/                    # Workflow extraction (workflow)
+│   ├── skills/                      # Skills extraction (skills)
 │   └── utils/
 │       ├── env_loader.py            # .env.local loading
 │       ├── logging.py               # Timestamped log setup
-│       └── progress.py              # Progress indicators
+│       ├── progress.py              # Progress indicators
+│       ├── silver_io.py             # Shared JSONL loading
+│       ├── content.py               # Content aggregation
+│       └── text.py                  # Text helpers
+├── scripts/                     # Example scripts (not shipped in package)
 ├── tests/                       # Unit, integration, contract tests
 ├── pyproject.toml
 ├── CONTRIBUTING.md
@@ -471,6 +538,6 @@ MIT License — see [LICENSE](LICENSE) for details.
   title     = {DocMeld: Lightweight PDF, Word & PowerPoint to Agent-Ready Knowledge Pipeline},
   year      = {2026},
   license   = {MIT},
-  url       = {https://github.com/[username]/docmeld}
+  url       = {https://github.com/agentii-ai/docmeld}
 }
 ```

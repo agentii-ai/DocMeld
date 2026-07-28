@@ -24,7 +24,7 @@ class TestPrdGenerator:
         ])
 
         mock_client = MagicMock()
-        mock_client.generate_prd.return_value = (
+        mock_client.generate.return_value = (
             "## Problem Statement\nReal-time video generation is slow.\n\n"
             "## Proposed Solution\nDiffusion-based pipeline.\n\n"
             "## Key Features\n- 30fps generation\n- Consumer GPU support\n\n"
@@ -39,7 +39,7 @@ class TestPrdGenerator:
         assert result.sections == 6
         assert result.source_pdf == "test.pdf"
         assert not result.skipped
-        mock_client.generate_prd.assert_called_once()
+        mock_client.generate.assert_called_once()
 
     def test_idempotency_skips_existing(self, tmp_path: Path) -> None:
         from docmeld.prd.generator import generate_prd
@@ -62,7 +62,7 @@ class TestPrdGenerator:
 
         assert result.skipped
         assert result.sections == 6
-        mock_client.generate_prd.assert_not_called()
+        mock_client.generate.assert_not_called()
 
     def test_raises_on_empty_content(self, tmp_path: Path) -> None:
         from docmeld.prd.generator import generate_prd
@@ -83,7 +83,7 @@ class TestPrdGenerator:
         ])
 
         mock_client = MagicMock()
-        mock_client.generate_prd.side_effect = RuntimeError("API down")
+        mock_client.generate.side_effect = RuntimeError("API down")
 
         prd_path = tmp_path / "paper_abc_prd.md"
         with pytest.raises(RuntimeError):
@@ -94,18 +94,18 @@ class TestPrdGenerator:
 
 class TestAggregateContent:
     def test_short_content_unchanged(self) -> None:
-        from docmeld.prd.generator import _aggregate_content
+        from docmeld.utils.content import aggregate_content
 
         pages = ["Page 1 content", "Page 2 content"]
-        result = _aggregate_content(pages)
+        result = aggregate_content(pages)
         assert "Page 1 content" in result
         assert "Page 2 content" in result
 
     def test_long_content_truncated(self) -> None:
-        from docmeld.prd.generator import _aggregate_content
+        from docmeld.utils.content import aggregate_content
 
         pages = ["x" * 20000, "y" * 20000]
-        result = _aggregate_content(pages, max_chars=1000)
+        result = aggregate_content(pages, max_chars=1000)
         assert len(result) <= 1100  # Some overhead for separator
         assert "truncated" in result
 

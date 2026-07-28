@@ -78,11 +78,11 @@ class TestCategorizer:
         mock_response = '{"categories": [{"name": "NLP", "papers": ["paper1.jsonl"], "keywords": ["nlp"]}, {"name": "CV", "papers": ["paper2.jsonl"], "keywords": ["vision"]}], "paper_descriptions": []}'
 
         mock_client = MagicMock()
-        mock_client.categorize_papers.return_value = mock_response
+        mock_client.categorize.return_value = mock_response
 
         categories, descs = categorize_papers(papers, mock_client)
         assert len(categories) == 2
-        assert mock_client.categorize_papers.call_count >= 2
+        assert mock_client.categorize.call_count >= 2
 
     def test_deterministic_sorting(self) -> None:
         from docmeld.categorize.categorizer import _build_categorization_prompt

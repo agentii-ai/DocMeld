@@ -1,4 +1,5 @@
 """Soffice backend — LibreOffice bridge for legacy .doc files."""
+
 from __future__ import annotations
 
 import logging
@@ -6,7 +7,7 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger("docmeld")
 
@@ -22,7 +23,7 @@ class SofficeBackend:
 
     SUPPORTED_SUFFIXES = {".doc", ".ppt"}
 
-    def extract_elements(self, doc_path: str, output_dir: str) -> List[Dict[str, Any]]:
+    def extract_elements(self, doc_path: str, output_dir: str) -> list[dict[str, Any]]:
         """Convert a legacy binary document to PDF and extract elements via PyMuPDF.
 
         Args:
@@ -35,17 +36,17 @@ class SofficeBackend:
         # Check LibreOffice availability
         soffice = shutil.which("soffice")
         if not soffice:
-            raise RuntimeError(
+            msg = (
                 "LibreOffice (soffice) is not installed or not on PATH. "
                 "Install LibreOffice to process .doc/.ppt files. "
                 "See https://www.libreoffice.org/download/"
             )
+            raise RuntimeError(msg)
 
         doc_path_obj = Path(doc_path)
         if doc_path_obj.suffix.lower() not in self.SUPPORTED_SUFFIXES:
-            raise ValueError(
-                f"SofficeBackend only supports .doc/.ppt files, got: {doc_path_obj.suffix}"
-            )
+            msg = f"SofficeBackend only supports .doc/.ppt files, got: {doc_path_obj.suffix}"
+            raise ValueError(msg)
 
         # Convert to PDF in a temp directory
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -54,8 +55,10 @@ class SofficeBackend:
                     [
                         soffice,
                         "--headless",
-                        "--convert-to", "pdf",
-                        "--outdir", tmpdir,
+                        "--convert-to",
+                        "pdf",
+                        "--outdir",
+                        tmpdir,
                         str(doc_path_obj),
                     ],
                     capture_output=True,
@@ -63,18 +66,17 @@ class SofficeBackend:
                     timeout=120,
                 )
                 if result.returncode != 0:
-                    raise RuntimeError(
-                        f"LibreOffice conversion failed: {result.stderr.strip()}"
-                    )
+                    msg = f"LibreOffice conversion failed: {result.stderr.strip()}"
+                    raise RuntimeError(msg)
             except subprocess.TimeoutExpired:
-                raise RuntimeError("LibreOffice conversion timed out after 120s")
+                msg = "LibreOffice conversion timed out after 120s"
+                raise RuntimeError(msg)
 
             # Find the generated PDF
             pdf_files = list(Path(tmpdir).glob("*.pdf"))
             if not pdf_files:
-                raise RuntimeError(
-                    "LibreOffice conversion produced no PDF output"
-                )
+                msg = "LibreOffice conversion produced no PDF output"
+                raise RuntimeError(msg)
 
             pdf_path = str(pdf_files[0])
 
@@ -92,15 +94,23 @@ class SofficeBackend:
                 # Re-convert
                 pdf_files[0].unlink(missing_ok=True)
                 subprocess.run(
-                    [soffice, "--headless", "--convert-to", "pdf",
-                     "--outdir", tmpdir, str(doc_path_obj)],
-                    capture_output=True, text=True, timeout=120,
+                    [
+                        soffice,
+                        "--headless",
+                        "--convert-to",
+                        "pdf",
+                        "--outdir",
+                        tmpdir,
+                        str(doc_path_obj),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
                 )
                 pdf_files2 = list(Path(tmpdir).glob("*.pdf"))
                 if not pdf_files2:
-                    raise RuntimeError(
-                        "LibreOffice retry also produced no PDF output"
-                    )
+                    msg = "LibreOffice retry also produced no PDF output"
+                    raise RuntimeError(msg)
                 elements = pymupdf.extract_elements(str(pdf_files2[0]), output_dir)
 
             logger.info(

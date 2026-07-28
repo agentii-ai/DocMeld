@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use DocMeld in your research, please cite it as below."
+title: "DocMeld: Lightweight document-to-agent-ready knowledge pipeline"
+abstract: >-
+  DocMeld converts PDF, Word, and PowerPoint documents into structured,
+  agent-consumable formats through a three-stage medallion pipeline
+  (Bronze → Silver → Gold) without requiring OCR, VLM, or multimodal models.
+type: software
+authors:
+  - name: "DocMeld Contributors"
+    email: "hello@agentii.xyz"
+repository-code: "https://github.com/agentii-ai/DocMeld"
+url: "https://github.com/agentii-ai/DocMeld"
+license: MIT
+version: "0.3.0"
+keywords:
+  - pdf
+  - docx
+  - pptx
+  - document-processing
+  - llm
+  - agents
+  - rag

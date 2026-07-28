@@ -1,10 +1,11 @@
 """Aggregate silver-stage content across all papers in a folder."""
+
 from __future__ import annotations
 
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from docmeld.categorize.models import PaperMetadata
 
@@ -23,7 +24,7 @@ def generate_article_md(silver_path: Path) -> Path | None:
     Returns:
         Path to the generated .md file, or None if no content.
     """
-    pages: List[Dict[str, Any]] = []
+    pages: list[dict[str, Any]] = []
     with open(silver_path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -46,7 +47,7 @@ def generate_article_md(silver_path: Path) -> Path | None:
     return md_path
 
 
-def aggregate_paper_metadata(folder_path: str) -> List[PaperMetadata]:
+def aggregate_paper_metadata(folder_path: str) -> list[PaperMetadata]:
     """Scan a folder for silver JSONL files and collect per-paper content.
 
     Looks for *.jsonl files (excluding *_gold.jsonl) in subdirectories.
@@ -60,12 +61,9 @@ def aggregate_paper_metadata(folder_path: str) -> List[PaperMetadata]:
         List of PaperMetadata, one per paper, sorted by filename.
     """
     folder = Path(folder_path)
-    results: List[PaperMetadata] = []
+    results: list[PaperMetadata] = []
 
-    silver_files = sorted(
-        p for p in folder.rglob("*.jsonl")
-        if not p.name.endswith("_gold.jsonl")
-    )
+    silver_files = sorted(p for p in folder.rglob("*.jsonl") if not p.name.endswith("_gold.jsonl"))
 
     for silver_path in silver_files:
         try:
@@ -82,7 +80,7 @@ def aggregate_paper_metadata(folder_path: str) -> List[PaperMetadata]:
 
 def _parse_silver_file(silver_path: Path) -> PaperMetadata | None:
     """Parse a silver JSONL file into PaperMetadata with truncated content."""
-    pages: List[Dict[str, Any]] = []
+    pages: list[dict[str, Any]] = []
     with open(silver_path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -93,7 +91,7 @@ def _parse_silver_file(silver_path: Path) -> PaperMetadata | None:
         return None
 
     # Concatenate page_content up to the char limit
-    content_parts: List[str] = []
+    content_parts: list[str] = []
     total_chars = 0
     for page in pages:
         page_content = page.get("page_content", "")

@@ -1,4 +1,5 @@
 """Pydantic models for workflow generation."""
+
 from __future__ import annotations
 
 from pydantic import BaseModel

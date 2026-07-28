@@ -4,17 +4,21 @@ Dispatches to a backend (pymupdf or docling) and applies shared
 post-processing: element_id assignment, parent_id hierarchy, table
 summaries, and structured table_data.
 """
+
 from __future__ import annotations
 
 import base64
 import glob
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from docmeld.bronze.backends import ParserBackend
 
 
 def extract_elements(
     pdf_path: str, output_dir: str, backend: str = "pymupdf"
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Extract all elements from a PDF file using the specified backend.
 
     Args:
@@ -25,6 +29,7 @@ def extract_elements(
     Returns:
         Ordered list of element dicts with type, page_no, element_id, parent_id.
     """
+    b: ParserBackend
     if backend == "docling":
         from docmeld.bronze.backends.docling_backend import DoclingBackend
 
@@ -57,7 +62,7 @@ def extract_elements(
     return elements
 
 
-def _resolve_group_parents(elements: List[Dict[str, Any]]) -> None:
+def _resolve_group_parents(elements: list[dict[str, Any]]) -> None:
     """Link grouped child shapes to their parent group element.
 
     The pptx backend tags group elements with a temporary ``_gid`` and each
@@ -66,7 +71,7 @@ def _resolve_group_parents(elements: List[Dict[str, Any]]) -> None:
     title-based parent), then strip the temporary keys so they never reach
     the JSON output.
     """
-    gid_to_element_id: Dict[int, str] = {}
+    gid_to_element_id: dict[int, str] = {}
     for elem in elements:
         gid = elem.get("_gid")
         if gid is not None:
@@ -80,13 +85,13 @@ def _resolve_group_parents(elements: List[Dict[str, Any]]) -> None:
         elem.pop("_pgid", None)
 
 
-def _assign_element_ids(elements: List[Dict[str, Any]]) -> None:
+def _assign_element_ids(elements: list[dict[str, Any]]) -> None:
     """Assign sequential element_id values (e_0001, e_0002, ...)."""
     for i, elem in enumerate(elements):
         elem["element_id"] = f"e_{i + 1:04d}"
 
 
-def _assign_parent_ids(elements: List[Dict[str, Any]]) -> None:
+def _assign_parent_ids(elements: list[dict[str, Any]]) -> None:
     """Assign parent_id based on nearest ancestor title at a higher level.
 
     Tracks a title stack keyed by level. Non-title elements get the
@@ -94,7 +99,7 @@ def _assign_parent_ids(elements: List[Dict[str, Any]]) -> None:
     the most recent title at a strictly higher (lower-numbered) level.
     """
     # Stack: level -> element_id of the most recent title at that level
-    title_stack: Dict[int, str] = {}
+    title_stack: dict[int, str] = {}
 
     for elem in elements:
         if elem["type"] == "title":
@@ -121,17 +126,15 @@ def _assign_parent_ids(elements: List[Dict[str, Any]]) -> None:
             elem["parent_id"] = parent_id
 
 
-def parse_markdown_to_elements(
-    md_content: str, page_no: int
-) -> List[Dict[str, Any]]:
+def parse_markdown_to_elements(md_content: str, page_no: int) -> list[dict[str, Any]]:
     """Parse markdown content into structured elements.
 
     Identifies titles (# lines), tables (| lines), and text blocks.
     """
-    elements: List[Dict[str, Any]] = []
+    elements: list[dict[str, Any]] = []
     lines = md_content.split("\n")
-    text_buffer: List[str] = []
-    table_buffer: List[str] = []
+    text_buffer: list[str] = []
+    table_buffer: list[str] = []
 
     for line in lines:
         stripped = line.strip()
@@ -228,7 +231,7 @@ def generate_table_summary(table_md: str) -> str:
         return ""
 
     lines = [line.strip() for line in table_md.strip().split("\n") if line.strip()]
-    items: List[str] = []
+    items: list[str] = []
 
     for i, line in enumerate(lines):
         if i == 0:
@@ -249,7 +252,7 @@ def generate_table_summary(table_md: str) -> str:
     return f"Items: {', '.join(items[:5])} (+{len(items) - 5} more)"
 
 
-def parse_table_data(table_md: str) -> Dict[str, Any]:
+def parse_table_data(table_md: str) -> dict[str, Any]:
     """Parse a markdown table into structured data.
 
     Returns:
@@ -260,10 +263,10 @@ def parse_table_data(table_md: str) -> Dict[str, Any]:
 
     lines = [line.strip() for line in table_md.strip().split("\n") if line.strip()]
 
-    headers: List[str] = []
-    rows: List[List[str]] = []
+    headers: list[str] = []
+    rows: list[list[str]] = []
 
-    for i, line in enumerate(lines):
+    for _i, line in enumerate(lines):
         # Skip separator lines (e.g. |---|---|)
         if all(c in "-|: " for c in line):
             continue
@@ -283,11 +286,9 @@ def parse_table_data(table_md: str) -> Dict[str, Any]:
     }
 
 
-def _discover_images(
-    output_dir: str, page_num: int
-) -> List[Dict[str, Any]]:
+def _discover_images(output_dir: str, page_num: int) -> list[dict[str, Any]]:
     """Discover pre-extracted image files for a page."""
-    elements: List[Dict[str, Any]] = []
+    elements: list[dict[str, Any]] = []
     page_prefix = f"page{page_num + 1:03d}"
     search_pattern = str(Path(output_dir) / f"{page_prefix}_*.png")
     image_files = sorted(glob.glob(search_pattern))

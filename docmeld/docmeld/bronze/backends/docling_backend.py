@@ -1,4 +1,5 @@
 """Docling backend for document element extraction (PDF, DOCX, PPTX)."""
+
 from __future__ import annotations
 
 import base64
@@ -60,39 +61,47 @@ class DoclingBackend:
 
             if item_type in ("SectionHeaderItem", "TitleItem"):
                 level = getattr(item, "level", 1)
-                elements.append({
-                    "type": "title",
-                    "level": max(0, level - 1),
-                    "content": item.text,
-                    "page_no": page_no,
-                })
+                elements.append(
+                    {
+                        "type": "title",
+                        "level": max(0, level - 1),
+                        "content": item.text,
+                        "page_no": page_no,
+                    }
+                )
 
             elif item_type == "TextItem":
                 if item.text.strip():
-                    elements.append({
-                        "type": "text",
-                        "content": item.text.strip(),
-                        "page_no": page_no,
-                    })
+                    elements.append(
+                        {
+                            "type": "text",
+                            "content": item.text.strip(),
+                            "page_no": page_no,
+                        }
+                    )
 
             elif item_type == "ListItem":
                 if item.text.strip():
-                    elements.append({
-                        "type": "text",
-                        "content": f"- {item.text.strip()}",
-                        "page_no": page_no,
-                    })
+                    elements.append(
+                        {
+                            "type": "text",
+                            "content": f"- {item.text.strip()}",
+                            "page_no": page_no,
+                        }
+                    )
 
             elif item_type == "TableItem":
                 md_content = self._table_to_markdown(item, doc)
                 table_data = self._table_to_structured(item)
-                elements.append({
-                    "type": "table",
-                    "summary": "",
-                    "content": md_content,
-                    "page_no": page_no,
-                    "table_data": table_data,
-                })
+                elements.append(
+                    {
+                        "type": "table",
+                        "summary": "",
+                        "content": md_content,
+                        "page_no": page_no,
+                        "table_data": table_data,
+                    }
+                )
 
             elif item_type == "PictureItem":
                 image_data = self._extract_picture(item, output_dir, page_no)
@@ -110,6 +119,7 @@ class DoclingBackend:
         elements: list[dict[str, Any]] = []
         try:
             from docx import Document as DocxDocument
+
             docx = DocxDocument(doc_path)
 
             for section_idx, section in enumerate(docx.sections):
@@ -121,12 +131,14 @@ class DoclingBackend:
                         if para.text.strip():
                             text_parts.append(para.text.strip())
                     if text_parts:
-                        elements.append({
-                            "type": "header",
-                            "content": " | ".join(text_parts),
-                            "page_scope": "all",
-                            "page_no": section_idx + 1,
-                        })
+                        elements.append(
+                            {
+                                "type": "header",
+                                "content": " | ".join(text_parts),
+                                "page_scope": "all",
+                                "page_no": section_idx + 1,
+                            }
+                        )
 
                 # Footer
                 footer = section.footer
@@ -136,12 +148,14 @@ class DoclingBackend:
                         if para.text.strip():
                             text_parts.append(para.text.strip())
                     if text_parts:
-                        elements.append({
-                            "type": "footer",
-                            "content": " | ".join(text_parts),
-                            "page_scope": "all",
-                            "page_no": section_idx + 1,
-                        })
+                        elements.append(
+                            {
+                                "type": "footer",
+                                "content": " | ".join(text_parts),
+                                "page_scope": "all",
+                                "page_no": section_idx + 1,
+                            }
+                        )
         except Exception:
             pass
         return elements
@@ -196,11 +210,11 @@ class DoclingBackend:
         if export_fn:
             try:
                 if doc is not None:
-                    return export_fn(doc=doc)
+                    return str(export_fn(doc=doc))
             except TypeError:
                 pass
             try:
-                return export_fn()
+                return str(export_fn())
             except Exception:
                 pass
 
@@ -244,9 +258,7 @@ class DoclingBackend:
         }
 
     @staticmethod
-    def _extract_picture(
-        item: Any, output_dir: str, page_no: int
-    ) -> dict[str, Any] | None:
+    def _extract_picture(item: Any, output_dir: str, page_no: int) -> dict[str, Any] | None:
         """Extract image data from a Docling PictureItem."""
         image = getattr(item, "image", None)
         if not image:

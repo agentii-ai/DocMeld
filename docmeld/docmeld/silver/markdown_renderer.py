@@ -1,7 +1,8 @@
 """Markdown renderer for silver stage - converts elements to page content."""
+
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from docmeld.silver.title_tracker import TitleTracker
 
@@ -20,7 +21,7 @@ def _count_data_rows(table_content: str) -> int:
 
 
 # Extended counter type for all element counters
-PageCounters = Dict[str, int]
+PageCounters = dict[str, int]
 
 
 def new_counters() -> PageCounters:
@@ -29,10 +30,10 @@ def new_counters() -> PageCounters:
 
 
 def render_page(
-    elements: List[Dict[str, Any]],
+    elements: list[dict[str, Any]],
     title_tracker: TitleTracker,
     counters: PageCounters | None = None,
-) -> Tuple[str, PageCounters]:
+) -> tuple[str, PageCounters]:
     """Render a list of elements into markdown page content.
 
     Supports 14 element types: title, text, table, image, chart,
@@ -50,7 +51,7 @@ def render_page(
     if counters is None:
         counters = new_counters()
 
-    parts: List[str] = []
+    parts: list[str] = []
 
     for elem in elements:
         elem_type = elem["type"]

@@ -1,7 +1,6 @@
 """Pydantic models for silver and gold pipeline stages."""
-from __future__ import annotations
 
-from typing import List, Optional
+from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
@@ -20,8 +19,8 @@ class SilverPage(BaseModel):
 
 class GoldMetadata(SilverMetadata):
     description: str = ""
-    keywords: List[str] = Field(default_factory=list)
-    gold_processing_failed: Optional[bool] = None
+    keywords: list[str] = Field(default_factory=list)
+    gold_processing_failed: bool | None = None
 
 
 class GoldPage(BaseModel):
@@ -38,7 +37,7 @@ class ProcessingResult(BaseModel):
     total_files: int
     successful: int
     failed: int
-    failures: List[ProcessingFailure] = Field(default_factory=list)
+    failures: list[ProcessingFailure] = Field(default_factory=list)
     processing_time_seconds: float = Field(ge=0)
     output_directory: str
     log_file: str

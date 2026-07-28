@@ -1,11 +1,14 @@
 """Categorize papers into topic clusters via DeepSeek API."""
+
 from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, List
+from typing import Any, cast
 
 from docmeld.categorize.models import PaperMetadata
+from docmeld.gold.provider import LLMProvider
+from docmeld.utils.text import strip_code_fences
 
 logger = logging.getLogger("docmeld")
 
@@ -14,8 +17,8 @@ DESC_BATCH_SIZE = 30
 
 
 def categorize_papers(
-    papers: List[PaperMetadata], client: Any
-) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    papers: list[PaperMetadata], client: LLMProvider
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Send aggregated paper content to DeepSeek for topic clustering.
 
     Two-phase approach:
@@ -24,7 +27,7 @@ def categorize_papers(
 
     Args:
         papers: List of PaperMetadata from the aggregator.
-        client: DeepSeekClient instance with categorize_papers() method.
+        client: An LLMProvider (e.g. DeepSeekClient).
 
     Returns:
         Tuple of (categories, paper_descriptions).
@@ -38,22 +41,21 @@ def categorize_papers(
     # Response is compact (just category names + filename lists), so it won't truncate
     logger.info(f"Phase 1: Categorizing {len(sorted_papers)} papers via API...")
     cat_prompt = _build_categorization_prompt(sorted_papers)
-    cat_response = client.categorize_papers(cat_prompt)
+    cat_response = client.categorize(cat_prompt)
     categories = _parse_categories_only(cat_response)
     logger.info(f"Identified {len(categories)} categories")
 
     # Phase 2: Get per-paper descriptions in batches
-    all_descs: List[Dict[str, Any]] = []
+    all_descs: list[dict[str, Any]] = []
     total_batches = (len(sorted_papers) + DESC_BATCH_SIZE - 1) // DESC_BATCH_SIZE
     for i in range(0, len(sorted_papers), DESC_BATCH_SIZE):
         batch = sorted_papers[i : i + DESC_BATCH_SIZE]
         batch_num = i // DESC_BATCH_SIZE + 1
         logger.info(
-            f"Phase 2: Descriptions batch {batch_num}/{total_batches} "
-            f"({len(batch)} papers)..."
+            f"Phase 2: Descriptions batch {batch_num}/{total_batches} ({len(batch)} papers)..."
         )
         desc_prompt = _build_description_prompt(batch)
-        desc_response = client.categorize_papers(desc_prompt)
+        desc_response = client.categorize(desc_prompt)
         batch_descs = _parse_descriptions_only(desc_response)
         all_descs.extend(batch_descs)
 
@@ -61,7 +63,7 @@ def categorize_papers(
     return categories, all_descs
 
 
-def _build_categorization_prompt(papers: List[PaperMetadata]) -> str:
+def _build_categorization_prompt(papers: list[PaperMetadata]) -> str:
     """Build a compact prompt for categorization using filenames + short excerpts.
 
     Keeps output small by only requesting category assignments (no descriptions).
@@ -110,7 +112,7 @@ def _build_categorization_prompt(papers: List[PaperMetadata]) -> str:
     )
 
 
-def _build_description_prompt(papers: List[PaperMetadata]) -> str:
+def _build_description_prompt(papers: list[PaperMetadata]) -> str:
     """Build a prompt for getting per-paper descriptions only."""
     sorted_papers = sorted(papers, key=lambda p: p.filename)
 
@@ -130,12 +132,12 @@ def _build_description_prompt(papers: List[PaperMetadata]) -> str:
     )
 
 
-def _parse_categories_only(response_text: str) -> List[Dict[str, Any]]:
+def _parse_categories_only(response_text: str) -> list[dict[str, Any]]:
     """Parse the API response for category assignments only.
 
     Attempts to repair truncated JSON if the response was cut off.
     """
-    text = _strip_code_fences(response_text)
+    text = strip_code_fences(response_text)
 
     try:
         data = json.loads(text)
@@ -143,37 +145,30 @@ def _parse_categories_only(response_text: str) -> List[Dict[str, Any]]:
         logger.warning("JSON truncated, attempting repair...")
         data = _repair_truncated_json(text)
         if data is None:
-            raise ValueError("Failed to parse or repair categorization response")
+            msg = "Failed to parse or repair categorization response"
+            raise ValueError(msg)
 
     if "categories" not in data:
-        raise ValueError("Missing 'categories' key in categorization response")
+        msg = "Missing 'categories' key in categorization response"
+        raise ValueError(msg)
 
-    return data["categories"]
+    return cast("list[dict[str, Any]]", data["categories"])
 
 
-def _parse_descriptions_only(response_text: str) -> List[Dict[str, Any]]:
+def _parse_descriptions_only(response_text: str) -> list[dict[str, Any]]:
     """Parse the API response for paper descriptions only."""
-    text = _strip_code_fences(response_text)
+    text = strip_code_fences(response_text)
 
     try:
         data = json.loads(text)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Failed to parse description response: {e}") from e
+        msg = f"Failed to parse description response: {e}"
+        raise ValueError(msg) from e
 
-    return data.get("paper_descriptions", [])
-
-
-def _strip_code_fences(text: str) -> str:
-    """Strip markdown code fences from API response."""
-    text = text.strip()
-    if text.startswith("```"):
-        lines = text.split("\n")
-        lines = [line for line in lines if not line.strip().startswith("```")]
-        text = "\n".join(lines).strip()
-    return text
+    return cast("list[dict[str, Any]]", data.get("paper_descriptions", []))
 
 
-def _repair_truncated_json(text: str) -> Dict[str, Any] | None:
+def _repair_truncated_json(text: str) -> dict[str, Any] | None:
     """Attempt to repair truncated JSON from a cut-off API response.
 
     Strategy: find the last complete category object and close the JSON structure.
@@ -200,49 +195,32 @@ def _repair_truncated_json(text: str) -> Dict[str, Any] | None:
         try:
             data = json.loads(truncated + suffix)
             if "categories" in data:
-                logger.info(f"Repaired truncated JSON ({len(data['categories'])} categories recovered)")
-                return data
+                logger.info(
+                    f"Repaired truncated JSON ({len(data['categories'])} categories recovered)"
+                )
+                return cast("dict[str, Any]", data)
         except json.JSONDecodeError:
             continue
 
     return None
 
 
-def _merge_categories(categories: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Merge categories with the same name from different batches."""
-    merged: Dict[str, Dict[str, Any]] = {}
-    for cat in categories:
-        name = cat.get("name", "Uncategorized")
-        if name in merged:
-            merged[name]["papers"].extend(cat.get("papers", []))
-            existing_kws = set(k.lower() for k in merged[name]["keywords"])
-            for kw in cat.get("keywords", []):
-                if kw.lower() not in existing_kws:
-                    merged[name]["keywords"].append(kw)
-                    existing_kws.add(kw.lower())
-        else:
-            merged[name] = {
-                "name": name,
-                "papers": list(cat.get("papers", [])),
-                "keywords": list(cat.get("keywords", [])),
-            }
-    return list(merged.values())
-
-
-# Keep backward-compatible parse function for tests
+# Backward-compatible parse function for tests
 def _parse_categorization_response(
     response_text: str,
-) -> tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Parse the API response into category assignments and paper descriptions."""
-    text = _strip_code_fences(response_text)
+    text = strip_code_fences(response_text)
 
     try:
         data = json.loads(text)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Failed to parse categorization response: {e}") from e
+        msg = f"Failed to parse categorization response: {e}"
+        raise ValueError(msg) from e
 
     if "categories" not in data:
-        raise ValueError("Missing 'categories' key in categorization response")
+        msg = "Missing 'categories' key in categorization response"
+        raise ValueError(msg)
 
     categories = data["categories"]
     paper_descs = data.get("paper_descriptions", [])

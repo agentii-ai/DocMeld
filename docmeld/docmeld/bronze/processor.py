@@ -1,4 +1,5 @@
 """Bronze stage processor — document to structured JSON elements."""
+
 from __future__ import annotations
 
 import json
@@ -74,7 +75,8 @@ class BronzeProcessor:
         """
         path = Path(doc_path)
         if not path.exists():
-            raise FileNotFoundError(f"Document not found: {doc_path}")
+            msg = f"Document not found: {doc_path}"
+            raise FileNotFoundError(msg)
 
         # Detect backend if auto
         resolved_backend = _detect_backend(path, backend)
@@ -104,6 +106,7 @@ class BronzeProcessor:
             ext = path.suffix.lower()
             if ext in PDF_EXTENSIONS:
                 import fitz
+
                 doc = fitz.open(doc_path)
                 page_count = len(doc)
                 doc.close()
@@ -158,7 +161,8 @@ class BronzeProcessor:
         folder = Path(folder_path)
 
         if not folder.is_dir():
-            raise NotADirectoryError(f"Not a directory: {folder_path}")
+            msg = f"Not a directory: {folder_path}"
+            raise NotADirectoryError(msg)
 
         # Collect all files and filter
         all_files = sorted(folder.iterdir())
@@ -175,9 +179,7 @@ class BronzeProcessor:
                 successful += 1
             except Exception as e:
                 failed += 1
-                failures.append(
-                    ProcessingFailure(filename=doc_file.name, error=str(e))
-                )
+                failures.append(ProcessingFailure(filename=doc_file.name, error=str(e)))
                 logger.error(f"Failed to process {doc_file.name}: {e}")
 
         elapsed = time.time() - start_time

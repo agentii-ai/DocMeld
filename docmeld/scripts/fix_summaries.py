@@ -1,13 +1,12 @@
 """Move root-level summaries into category folders, then re-summarize failed papers.
 
 Usage:
-    cd /Users/frank/A/DocMeld
-    source docmeld/venv/bin/activate
-    python -m docmeld.fix_summaries "/Users/frank/Documents/AI/SynthData/25-26/" --workers 5
+    cd /Users/frank/A/DocMeld/docmeld
+    source venv/bin/activate
+    python scripts/fix_summaries.py "/path/to/folder" --workers 5
 """
 from __future__ import annotations
 
-import json
 import shutil
 import sys
 import time
@@ -17,8 +16,15 @@ from typing import Dict, List
 
 from docmeld.bronze.filename_sanitizer import calculate_hash
 from docmeld.gold.deepseek_client import DeepSeekClient, call_with_retry
-from docmeld.summarize import SUMMARIZE_PROMPT, _call_summarize_api, assemble_paper_content
 from docmeld.utils.env_loader import load_env
+
+# summarize.py is a sibling script in this folder, not part of the installed package.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from summarize import (
+    SUMMARIZE_PROMPT,
+    _call_summarize_api,
+    assemble_paper_content,
+)
 
 DEFAULT_WORKERS = 5
 
@@ -176,6 +182,7 @@ def main(folder_path: str, workers: int = DEFAULT_WORKERS) -> None:
 
 if __name__ == "__main__":
     import argparse
+
     from docmeld.utils.logging import setup_logging
     setup_logging()
 

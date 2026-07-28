@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = "MIT"
 authors = [
-    {name = "DocMeld Contributors"}
+    {name = "DocMeld Contributors", email = "hello@agentii.xyz"}
 ]
 keywords = ["pdf", "docx", "pptx", "powerpoint", "word", "parsing", "agents", "llm", "document-processing"]
 classifiers = [
@@ -47,9 +47,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/docmeld/docmeld"
-Repository = "https://github.com/docmeld/docmeld"
-Issues = "https://github.com/docmeld/docmeld/issues"
+Homepage = "https://github.com/agentii-ai/DocMeld"
+Repository = "https://github.com/agentii-ai/DocMeld"
+Documentation = "https://github.com/agentii-ai/DocMeld#readme"
+Changelog = "https://github.com/agentii-ai/DocMeld/blob/main/docmeld/CHANGELOG.md"
+Issues = "https://github.com/agentii-ai/DocMeld/issues"
 
 [project.scripts]
 docmeld = "docmeld.cli:main"
@@ -57,6 +59,9 @@ docmeld = "docmeld.cli:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["docmeld*"]
+
+[tool.setuptools.package-data]
+docmeld = ["py.typed"]
 
 [tool.black]
 line-length = 100
@@ -68,8 +73,12 @@ target-version = "py39"
 select = ["E", "F", "W", "I", "N", "UP", "B", "A", "C4", "DTZ", "T10", "EM", "ISC", "ICN", "PIE", "PT", "Q", "RSE", "RET", "SIM", "TID", "ARG", "PLE", "PLW", "RUF"]
 ignore = ["E501"]
 
+[tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["RUF001"]  # intentional full-width characters in Chinese prompts
+
 [tool.mypy]
 python_version = "3.9"
+files = ["docmeld"]
 strict = true
 warn_return_any = true
 warn_unused_configs = true
@@ -80,6 +89,27 @@ no_implicit_optional = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
+
+# Third-party packages that ship no type stubs / py.typed marker.
+# follow_imports = skip stops mypy from analyzing these heavy optional deps
+# (docling pulls in torch, whose sources aren't py3.9-clean).
+[[tool.mypy.overrides]]
+module = [
+    "fitz",
+    "fitz.*",
+    "pymupdf4llm",
+    "pymupdf4llm.*",
+    "docling",
+    "docling.*",
+    "torch",
+    "torch.*",
+    "pptx",
+    "pptx.*",
+    "langchain_deepseek",
+    "langchain_deepseek.*",
+]
+ignore_missing_imports = true
+follow_imports = "skip"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

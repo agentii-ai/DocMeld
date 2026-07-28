@@ -1,4 +1,5 @@
 """DocMeld CLI interface."""
+
 from __future__ import annotations
 
 import argparse
@@ -16,7 +17,9 @@ def main(args: list[str] | None = None) -> int:
 
     # process (all stages)
     p_all = subparsers.add_parser("process", help="Run full pipeline (bronze → silver → gold)")
-    p_all.add_argument("path", help="Path to a document/presentation file or folder (.pdf/.docx/.doc/.pptx/.ppt)")
+    p_all.add_argument(
+        "path", help="Path to a document/presentation file or folder (.pdf/.docx/.doc/.pptx/.ppt)"
+    )
     p_all.add_argument(
         "--backend",
         choices=["pymupdf", "docling", "pptx", "soffice", "auto"],
@@ -26,7 +29,9 @@ def main(args: list[str] | None = None) -> int:
 
     # bronze
     p_bronze = subparsers.add_parser("bronze", help="Run bronze stage only (PDF → JSON)")
-    p_bronze.add_argument("path", help="Path to a document/presentation file or folder (.pdf/.docx/.doc/.pptx/.ppt)")
+    p_bronze.add_argument(
+        "path", help="Path to a document/presentation file or folder (.pdf/.docx/.doc/.pptx/.ppt)"
+    )
     p_bronze.add_argument(
         "--backend",
         choices=["pymupdf", "docling", "pptx", "soffice", "auto"],
@@ -99,6 +104,7 @@ def main(args: list[str] | None = None) -> int:
         return 1
 
     from docmeld.parser import DocMeldParser
+    from docmeld.silver.page_models import BronzeResult
     from docmeld.utils.logging import setup_logging
 
     logger = setup_logging()
@@ -107,34 +113,40 @@ def main(args: list[str] | None = None) -> int:
         backend = getattr(parsed, "backend", "auto")
         if parsed.command == "process":
             doc = DocMeldParser(path, backend=backend)
-            result = doc.process_all()
-            print(f"Done: {result.successful}/{result.total_files} files processed")
-            if result.failed > 0:
-                print(f"Failed: {result.failed} files")
-                for f in result.failures:
+            proc_result = doc.process_all()
+            print(f"Done: {proc_result.successful}/{proc_result.total_files} files processed")
+            if proc_result.failed > 0:
+                print(f"Failed: {proc_result.failed} files")
+                for f in proc_result.failures:
                     print(f"  - {f.filename}: {f.error}")
-            print(f"Time: {result.processing_time_seconds}s")
+            print(f"Time: {proc_result.processing_time_seconds}s")
 
         elif parsed.command == "bronze":
             doc = DocMeldParser(path, backend=backend)
-            result = doc.process_bronze()
-            if hasattr(result, "element_count"):
-                print(f"Bronze: {result.element_count} elements, {result.page_count} pages")
-                print(f"Output: {result.output_path}")
+            bronze_result = doc.process_bronze()
+            if isinstance(bronze_result, BronzeResult):
+                print(
+                    f"Bronze: {bronze_result.element_count} elements, "
+                    f"{bronze_result.page_count} pages"
+                )
+                print(f"Output: {bronze_result.output_path}")
             else:
-                print(f"Bronze batch: {result.successful}/{result.total_files} files")
+                print(f"Bronze batch: {bronze_result.successful}/{bronze_result.total_files} files")
 
         elif parsed.command == "silver":
             doc = DocMeldParser(path)
-            result = doc.process_silver(path)
-            print(f"Silver: {result.page_count} pages")
-            print(f"Output: {result.output_path}")
+            silver_result = doc.process_silver(path)
+            print(f"Silver: {silver_result.page_count} pages")
+            print(f"Output: {silver_result.output_path}")
 
         elif parsed.command == "gold":
             doc = DocMeldParser(path)
-            result = doc.process_gold(path)
-            print(f"Gold: {result.pages_enriched} enriched, {result.pages_failed} failed")
-            print(f"Output: {result.output_path}")
+            gold_result = doc.process_gold(path)
+            print(
+                f"Gold: {gold_result.pages_enriched} enriched, "
+                f"{gold_result.pages_failed} failed"
+            )
+            print(f"Output: {gold_result.output_path}")
 
         elif parsed.command == "categorize":
             if not Path(path).is_dir():
@@ -142,13 +154,16 @@ def main(args: list[str] | None = None) -> int:
                 return 1
             reorganize = getattr(parsed, "reorganize", False)
             doc = DocMeldParser(path, backend=backend)
-            result = doc.process_categorize(reorganize=reorganize)
-            if result.total_papers == 0:
+            cat_result = doc.process_categorize(reorganize=reorganize)
+            if cat_result.total_papers == 0:
                 print("No PDFs found to categorize")
             else:
-                print(f"Categorized {result.total_papers} papers into {result.total_categories} categories")
-                print(f"Index: {result.index_path}")
-                if result.reorganized:
+                print(
+                    f"Categorized {cat_result.total_papers} papers into "
+                    f"{cat_result.total_categories} categories"
+                )
+                print(f"Index: {cat_result.index_path}")
+                if cat_result.reorganized:
                     print("Files reorganized into category subdirectories")
 
         elif parsed.command == "prd":
@@ -156,36 +171,44 @@ def main(args: list[str] | None = None) -> int:
                 print(f"Error: prd requires a single PDF file, got folder: {path}", file=sys.stderr)
                 return 1
             doc = DocMeldParser(path, backend=backend)
-            result = doc.process_prd()
-            if result.skipped:
-                print(f"PRD already exists: {result.output_path}")
+            prd_result = doc.process_prd()
+            if prd_result.skipped:
+                print(f"PRD already exists: {prd_result.output_path}")
             else:
-                print(f"PRD generated: {result.sections} sections")
-                print(f"Output: {result.output_path}")
+                print(f"PRD generated: {prd_result.sections} sections")
+                print(f"Output: {prd_result.output_path}")
 
         elif parsed.command == "workflow":
             if Path(path).is_dir():
-                print(f"Error: workflow requires a single PDF file, got folder: {path}", file=sys.stderr)
+                print(
+                    f"Error: workflow requires a single PDF file, got folder: {path}",
+                    file=sys.stderr,
+                )
                 return 1
             doc = DocMeldParser(path, backend=backend)
-            result = doc.process_workflow()
-            if result.skipped:
-                print(f"Workflow already exists: {result.output_path}")
+            wf_result = doc.process_workflow()
+            if wf_result.skipped:
+                print(f"Workflow already exists: {wf_result.output_path}")
             else:
-                print(f"Workflow generated: {result.sections} sections")
-                print(f"Output: {result.output_path}")
+                print(f"Workflow generated: {wf_result.sections} sections")
+                print(f"Output: {wf_result.output_path}")
 
         elif parsed.command == "skills":
             if Path(path).is_dir():
-                print(f"Error: skills requires a single PDF file, got folder: {path}", file=sys.stderr)
+                print(
+                    f"Error: skills requires a single PDF file, got folder: {path}", file=sys.stderr
+                )
                 return 1
             doc = DocMeldParser(path, backend=backend)
-            result = doc.process_skills()
-            if result.skipped:
-                print(f"Skills already exist: {result.output_dir} ({result.skill_count} skills)")
+            skills_result = doc.process_skills()
+            if skills_result.skipped:
+                print(
+                    f"Skills already exist: {skills_result.output_dir} "
+                    f"({skills_result.skill_count} skills)"
+                )
             else:
-                print(f"Extracted {result.skill_count} skills")
-                print(f"Output: {result.output_dir}")
+                print(f"Extracted {skills_result.skill_count} skills")
+                print(f"Output: {skills_result.output_dir}")
 
     except Exception as e:
         logger.error(f"Pipeline error: {e}")

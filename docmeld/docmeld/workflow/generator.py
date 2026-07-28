@@ -1,11 +1,14 @@
 """Workflow generator - extract step-by-step workflows from paper content."""
+
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
-from typing import Any, List
 
+from docmeld.gold.provider import LLMProvider
+from docmeld.utils.content import aggregate_content
+from docmeld.utils.silver_io import load_silver_content
+from docmeld.utils.text import strip_code_fences
 from docmeld.workflow.models import WorkflowResult
 
 logger = logging.getLogger("docmeld")
@@ -20,7 +23,7 @@ WORKFLOW_SECTIONS = [
 
 
 def generate_workflow(
-    silver_jsonl_path: str, client: Any, source_pdf: str = ""
+    silver_jsonl_path: str, client: LLMProvider, source_pdf: str = ""
 ) -> WorkflowResult:
     """Generate a workflow markdown file from a silver JSONL file.
 
@@ -48,18 +51,19 @@ def generate_workflow(
         )
 
     # Load silver pages
-    pages = _load_silver_content(str(jsonl_path))
+    pages = load_silver_content(str(jsonl_path))
     if not pages:
-        raise ValueError(f"No content found in {silver_jsonl_path}")
+        msg = f"No content found in {silver_jsonl_path}"
+        raise ValueError(msg)
 
     # Aggregate content (truncate for long papers)
-    aggregated = _aggregate_content(pages)
+    aggregated = aggregate_content(pages)
 
     # Generate workflow via API
     prompt = _build_workflow_prompt(aggregated, source_pdf)
     logger.info(f"Generating workflow for {source_pdf or jsonl_path.name}...")
 
-    response_text = client.generate_prd(prompt)  # Reuses same API method
+    response_text = client.generate(prompt)
     wf_content = _parse_workflow_response(response_text, source_pdf)
 
     # Atomic write
@@ -72,37 +76,6 @@ def generate_workflow(
         output_path=str(wf_path),
         sections=section_count,
         source_pdf=source_pdf,
-    )
-
-
-def _load_silver_content(jsonl_path: str) -> List[str]:
-    """Load page content from a silver JSONL file."""
-    pages: List[str] = []
-    with open(jsonl_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                page = json.loads(line)
-                content = page.get("page_content", "")
-                if content.strip():
-                    pages.append(content)
-    return pages
-
-
-def _aggregate_content(pages: List[str], max_chars: int = 30000) -> str:
-    """Aggregate page content, truncating if too long."""
-    full_content = "\n\n---\n\n".join(pages)
-
-    if len(full_content) <= max_chars:
-        return full_content
-
-    first_budget = int(max_chars * 0.6)
-    last_budget = max_chars - first_budget
-
-    return (
-        full_content[:first_budget]
-        + "\n\n[... content truncated for length ...]\n\n"
-        + full_content[-last_budget:]
     )
 
 
@@ -137,10 +110,7 @@ def _parse_workflow_response(response_text: str, source_name: str = "") -> str:
     text = response_text.strip()
 
     # Strip code fences if present
-    if text.startswith("```"):
-        lines = text.split("\n")
-        lines = [line for line in lines if not line.strip().startswith("```")]
-        text = "\n".join(lines).strip()
+    text = strip_code_fences(text)
 
     # Add title header if not present
     if not text.startswith("# "):

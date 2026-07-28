@@ -1,20 +1,28 @@
 """DocMeld main parser - orchestrates the full pipeline."""
+
 from __future__ import annotations
 
 import logging
 import time
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING
 
 from docmeld.bronze.processor import BronzeProcessor
 from docmeld.silver.page_models import (
     BronzeResult,
     CategorizeResult,
     GoldResult,
+    ProcessingFailure,
     ProcessingResult,
     SilverResult,
 )
 from docmeld.silver.processor import SilverProcessor
+
+if TYPE_CHECKING:
+    from docmeld.gold.provider import LLMProvider
+    from docmeld.prd.models import PrdResult
+    from docmeld.skills.models import SkillsResult
+    from docmeld.workflow.models import WorkflowResult
 
 logger = logging.getLogger("docmeld")
 
@@ -24,13 +32,45 @@ class DocMeldParser:
 
     Supports processing a single PDF file or a folder of PDFs
     through bronze, silver, and gold stages.
+
+    Args:
+        path: Path to a PDF file or folder of PDFs.
+        output_dir: Override for the output directory (optional).
+        backend: Parser backend name (pymupdf/docling/pptx/soffice/auto).
+        provider: Optional LLMProvider for gold/knowledge stages. When None
+            (default), a DeepSeekClient is constructed from environment
+            variables — behavior is byte-for-byte identical to pre-0.4.0.
     """
 
-    def __init__(self, path: str, output_dir: Optional[str] = None, backend: str = "pymupdf") -> None:
+    def __init__(
+        self,
+        path: str,
+        output_dir: str | None = None,
+        backend: str = "pymupdf",
+        provider: LLMProvider | None = None,
+    ) -> None:
         self.path = path
-        self.output_dir = output_dir
         self.backend = backend
+        self.provider = provider
         self._is_folder = Path(path).is_dir()
+
+    def _get_client(self) -> LLMProvider:
+        """Return the injected provider or construct a DeepSeekClient from env.
+
+        This is the injection seam: when ``provider`` is set, all gold-stage
+        and knowledge-generation features use it instead of DeepSeek.
+        """
+        if self.provider is not None:
+            return self.provider
+
+        from docmeld.gold.deepseek_client import DeepSeekClient
+        from docmeld.utils.env_loader import load_env
+
+        env = load_env(require_api_key=True)
+        return DeepSeekClient(
+            api_key=env["DEEPSEEK_API_KEY"],
+            endpoint=env.get("DEEPSEEK_API_ENDPOINT"),
+        )
 
     def process_bronze(self) -> BronzeResult | ProcessingResult:
         """Run bronze stage only."""
@@ -54,6 +94,7 @@ class DocMeldParser:
             api_key=env["DEEPSEEK_API_KEY"],
             endpoint=env.get("DEEPSEEK_API_ENDPOINT"),
             temperature=1.0,
+            provider=self.provider,
         )
         return processor.process(silver_jsonl_path)
 
@@ -99,9 +140,17 @@ class DocMeldParser:
         elapsed = time.time() - start_time
         return ProcessingResult(
             total_files=1,
-            successful=1,
-            failed=0,
-            failures=[],
+            successful=0 if gold_failed else 1,
+            failed=1 if gold_failed else 0,
+            failures=(
+                [
+                    ProcessingFailure(
+                        filename=str(bronze_result.output_path), error="Gold stage failed"
+                    )
+                ]
+                if gold_failed
+                else []
+            ),
             processing_time_seconds=round(elapsed, 2),
             output_directory=bronze_result.output_dir,
             log_file="",
@@ -121,11 +170,13 @@ class DocMeldParser:
             CategorizeResult with index path and statistics.
         """
         if not self._is_folder:
-            raise ValueError("process_categorize() requires a folder path, not a single file")
+            msg = "process_categorize() requires a folder path, not a single file"
+            raise ValueError(msg)
 
         folder = Path(self.path)
         if not folder.exists():
-            raise FileNotFoundError(f"Folder not found: {self.path}")
+            msg = f"Folder not found: {self.path}"
+            raise FileNotFoundError(msg)
 
         pdf_files = list(folder.glob("*.pdf")) + list(folder.glob("*.PDF"))
         if not pdf_files:
@@ -143,7 +194,7 @@ class DocMeldParser:
         silver_processor = SilverProcessor()
 
         logger.info(f"Processing {len(pdf_files)} PDFs through bronze → silver...")
-        bronze_result = bronze_processor.process_folder(self.path, backend=self.backend)
+        bronze_processor.process_folder(self.path, backend=self.backend)
 
         for subdir in sorted(folder.iterdir()):
             json_files = list(subdir.glob("*.json")) if subdir.is_dir() else []
@@ -167,17 +218,10 @@ class DocMeldParser:
                 reorganized=False,
             )
 
-        # Step 3: Categorize via DeepSeek (single API call)
+        # Step 3: Categorize via LLM provider (single API call)
         from docmeld.categorize.categorizer import categorize_papers
-        from docmeld.gold.deepseek_client import DeepSeekClient
-        from docmeld.utils.env_loader import load_env
 
-        env = load_env(require_api_key=True)
-        client = DeepSeekClient(
-            api_key=env["DEEPSEEK_API_KEY"],
-            endpoint=env.get("DEEPSEEK_API_ENDPOINT"),
-        )
-
+        client = self._get_client()
         categories, paper_descs = categorize_papers(papers, client)
 
         # Enrich papers with descriptions/keywords from the API response
@@ -216,28 +260,22 @@ class DocMeldParser:
             PrdResult with output path and section count.
         """
         if self._is_folder:
-            raise ValueError("process_prd() requires a single PDF file, not a folder")
+            msg = "process_prd() requires a single PDF file, not a folder"
+            raise ValueError(msg)
 
         from docmeld.prd.generator import generate_prd
 
         # Step 1: Bronze
         bronze_result = self.process_bronze()
         if not hasattr(bronze_result, "output_path"):
-            raise RuntimeError("Bronze processing failed")
+            msg = "Bronze processing failed"
+            raise RuntimeError(msg)
 
         # Step 2: Silver
         silver_result = self.process_silver(bronze_result.output_path)
 
         # Step 3: Generate PRD
-        from docmeld.gold.deepseek_client import DeepSeekClient
-        from docmeld.utils.env_loader import load_env
-
-        env = load_env(require_api_key=True)
-        client = DeepSeekClient(
-            api_key=env["DEEPSEEK_API_KEY"],
-            endpoint=env.get("DEEPSEEK_API_ENDPOINT"),
-        )
-
+        client = self._get_client()
         return generate_prd(
             silver_jsonl_path=silver_result.output_path,
             client=client,
@@ -254,28 +292,22 @@ class DocMeldParser:
             WorkflowResult with output path and section count.
         """
         if self._is_folder:
-            raise ValueError("process_workflow() requires a single PDF file, not a folder")
+            msg = "process_workflow() requires a single PDF file, not a folder"
+            raise ValueError(msg)
 
         from docmeld.workflow.generator import generate_workflow
 
         # Step 1: Bronze
         bronze_result = self.process_bronze()
         if not hasattr(bronze_result, "output_path"):
-            raise RuntimeError("Bronze processing failed")
+            msg = "Bronze processing failed"
+            raise RuntimeError(msg)
 
         # Step 2: Silver
         silver_result = self.process_silver(bronze_result.output_path)
 
         # Step 3: Generate Workflow
-        from docmeld.gold.deepseek_client import DeepSeekClient
-        from docmeld.utils.env_loader import load_env
-
-        env = load_env(require_api_key=True)
-        client = DeepSeekClient(
-            api_key=env["DEEPSEEK_API_KEY"],
-            endpoint=env.get("DEEPSEEK_API_ENDPOINT"),
-        )
-
+        client = self._get_client()
         return generate_workflow(
             silver_jsonl_path=silver_result.output_path,
             client=client,
@@ -292,28 +324,22 @@ class DocMeldParser:
             SkillsResult with output directory and skill count.
         """
         if self._is_folder:
-            raise ValueError("process_skills() requires a single PDF file, not a folder")
+            msg = "process_skills() requires a single PDF file, not a folder"
+            raise ValueError(msg)
 
         from docmeld.skills.generator import generate_skills
 
         # Step 1: Bronze
         bronze_result = self.process_bronze()
         if not hasattr(bronze_result, "output_path"):
-            raise RuntimeError("Bronze processing failed")
+            msg = "Bronze processing failed"
+            raise RuntimeError(msg)
 
         # Step 2: Silver
         silver_result = self.process_silver(bronze_result.output_path)
 
         # Step 3: Generate Skills
-        from docmeld.gold.deepseek_client import DeepSeekClient
-        from docmeld.utils.env_loader import load_env
-
-        env = load_env(require_api_key=True)
-        client = DeepSeekClient(
-            api_key=env["DEEPSEEK_API_KEY"],
-            endpoint=env.get("DEEPSEEK_API_ENDPOINT"),
-        )
-
+        client = self._get_client()
         return generate_skills(
             silver_jsonl_path=silver_result.output_path,
             client=client,

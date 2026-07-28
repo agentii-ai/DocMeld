@@ -1,0 +1,40 @@
+name: Feature Request
+description: Suggest an idea or enhancement for DocMeld
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / motivation
+      description: What are you trying to do that DocMeld doesn't support today?
+      placeholder: I want to ... but currently ...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the feature or behavior you'd like.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds or other approaches you've thought about.
+    validations:
+      required: false
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Which stage does this relate to?
+      options:
+        - Bronze (extraction)
+        - Silver (page JSONL)
+        - Gold (AI enrichment)
+        - Knowledge generation (categorize / prd / workflow / skills)
+        - CLI / packaging
+        - Other / not sure
+    validations:
+      required: false

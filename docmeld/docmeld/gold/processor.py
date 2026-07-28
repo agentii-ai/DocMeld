@@ -1,13 +1,14 @@
 """Gold stage processor - enrich silver JSONL with AI metadata."""
+
 from __future__ import annotations
 
 import json
 import logging
 from pathlib import Path
-from typing import Optional
 
 from docmeld.gold.deepseek_client import DeepSeekClient
 from docmeld.gold.metadata_extractor import MetadataExtractor
+from docmeld.gold.provider import LLMProvider
 from docmeld.silver.page_models import GoldResult
 
 logger = logging.getLogger("docmeld")
@@ -19,10 +20,11 @@ class GoldProcessor:
     def __init__(
         self,
         api_key: str,
-        endpoint: Optional[str] = None,
+        endpoint: str | None = None,
         temperature: float = 1.0,
+        provider: LLMProvider | None = None,
     ) -> None:
-        self.client = DeepSeekClient(
+        self.client: LLMProvider = provider or DeepSeekClient(
             api_key=api_key,
             endpoint=endpoint,
             temperature=temperature,
@@ -42,12 +44,11 @@ class GoldProcessor:
         """
         jsonl_path = Path(silver_jsonl_path)
         if not jsonl_path.exists():
-            raise FileNotFoundError(f"Silver JSONL not found: {silver_jsonl_path}")
+            msg = f"Silver JSONL not found: {silver_jsonl_path}"
+            raise FileNotFoundError(msg)
 
         # Output path with _gold suffix
-        gold_path = jsonl_path.with_name(
-            jsonl_path.stem + "_gold" + jsonl_path.suffix
-        )
+        gold_path = jsonl_path.with_name(jsonl_path.stem + "_gold" + jsonl_path.suffix)
 
         # Idempotency check
         if gold_path.exists():
@@ -57,14 +58,10 @@ class GoldProcessor:
                 return GoldResult(
                     output_path=str(gold_path),
                     pages_enriched=sum(
-                        1
-                        for p in pages
-                        if not p.get("metadata", {}).get("gold_processing_failed")
+                        1 for p in pages if not p.get("metadata", {}).get("gold_processing_failed")
                     ),
                     pages_failed=sum(
-                        1
-                        for p in pages
-                        if p.get("metadata", {}).get("gold_processing_failed")
+                        1 for p in pages if p.get("metadata", {}).get("gold_processing_failed")
                     ),
                     skipped=True,
                 )
@@ -102,9 +99,7 @@ class GoldProcessor:
                 page["metadata"].update(metadata)
                 out.write(json.dumps(page, ensure_ascii=False) + "\n")
 
-        logger.info(
-            f"Gold: {jsonl_path.name} → {pages_enriched} enriched, {pages_failed} failed"
-        )
+        logger.info(f"Gold: {jsonl_path.name} → {pages_enriched} enriched, {pages_failed} failed")
 
         return GoldResult(
             output_path=str(gold_path),

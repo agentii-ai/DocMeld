@@ -1,0 +1,63 @@
+name: Bug Report
+description: Report a problem with DocMeld
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. Please fill out the sections below.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+      placeholder: When I run `docmeld process ...`, I get ...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps (and a sample file if possible) that trigger the bug.
+      placeholder: |
+        1. Run `docmeld ...`
+        2. Observe ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: DocMeld version
+      description: Output of `pip show docmeld` or the git commit.
+      placeholder: "0.3.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: format
+    attributes:
+      label: Document format
+      options:
+        - PDF
+        - DOCX
+        - DOC
+        - PPTX
+        - PPT
+        - Other / N/A
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version & OS
+      placeholder: "Python 3.11 on macOS 14"
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / traceback
+      description: Paste any error output. This is automatically formatted as code.
+      render: shell
+    validations:
+      required: false

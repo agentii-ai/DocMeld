@@ -9,6 +9,22 @@ import pytest
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 
+def pytest_collection_modifyitems(config, items):
+    """Auto-tag tests by directory so ``pytest -m unit`` etc. work.
+
+    Maps tests/unit/ → unit, tests/integration/ → integration,
+    tests/contract/ → contract. No per-test decorators needed.
+    """
+    for item in items:
+        fspath = str(item.fspath)
+        if "/unit/" in fspath:
+            item.add_marker(pytest.mark.unit)
+        elif "/integration/" in fspath:
+            item.add_marker(pytest.mark.integration)
+        elif "/contract/" in fspath:
+            item.add_marker(pytest.mark.contract)
+
+
 @pytest.fixture()
 def fixtures_dir() -> Path:
     return FIXTURES_DIR

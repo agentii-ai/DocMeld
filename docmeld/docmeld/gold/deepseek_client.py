@@ -1,10 +1,13 @@
 """DeepSeek API client for gold stage metadata extraction."""
+
 from __future__ import annotations
 
 import json
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional, TypeVar
+from typing import Any, Callable, TypeVar
+
+from docmeld.utils.text import strip_code_fences
 
 logger = logging.getLogger("docmeld")
 
@@ -29,7 +32,7 @@ def call_with_retry(
     Raises:
         The last exception if all retries fail.
     """
-    last_exception: Optional[Exception] = None
+    last_exception: Exception | None = None
     for attempt in range(max_retries):
         try:
             return func()
@@ -45,21 +48,24 @@ def call_with_retry(
 class DeepSeekClient:
     """Wrapper for DeepSeek chat API with structured output."""
 
+    DEFAULT_MODEL = "deepseek-chat"
+
     def __init__(
         self,
         api_key: str,
-        endpoint: Optional[str] = None,
+        endpoint: str | None = None,
         temperature: float = 1.0,
+        model: str = DEFAULT_MODEL,
     ) -> None:
         if not api_key:
-            raise ValueError(
-                "DEEPSEEK_API_KEY is required. Set it in .env.local or pass directly."
-            )
+            msg = "DEEPSEEK_API_KEY is required. Set it in .env.local or pass directly."
+            raise ValueError(msg)
         self.api_key = api_key
         self.endpoint = endpoint
         self.temperature = temperature
+        self.model = model
 
-    def extract_metadata(self, page_content: str) -> Dict[str, Any]:
+    def extract_metadata(self, page_content: str) -> dict[str, Any]:
         """Extract description and keywords from page content.
 
         Args:
@@ -74,12 +80,12 @@ class DeepSeekClient:
             base_delay=1.0,
         )
 
-    def _call_api(self, page_content: str) -> Dict[str, Any]:
+    def _call_api(self, page_content: str) -> dict[str, Any]:
         """Make the actual API call to DeepSeek."""
         from langchain_deepseek import ChatDeepSeek
 
-        kwargs: Dict[str, Any] = {
-            "model": "deepseek-chat",
+        kwargs: dict[str, Any] = {
+            "model": self.model,
             "temperature": self.temperature,
             "api_key": self.api_key,
         }
@@ -101,10 +107,7 @@ class DeepSeekClient:
         text = str(response.content).strip()
 
         # Strip markdown code fences if present
-        if text.startswith("```"):
-            lines = text.split("\n")
-            lines = [l for l in lines if not l.strip().startswith("```")]
-            text = "\n".join(lines).strip()
+        text = strip_code_fences(text)
 
         result = json.loads(text)
 
@@ -113,10 +116,8 @@ class DeepSeekClient:
             "keywords": result.get("keywords", []),
         }
 
-    def categorize_papers(self, prompt: str) -> str:
+    def categorize(self, prompt: str) -> str:
         """Send a categorization prompt and return the raw response text.
-
-        Uses temperature=1.0 for data extraction output.
 
         Args:
             prompt: The full categorization prompt with paper metadata.
@@ -125,18 +126,35 @@ class DeepSeekClient:
             Raw response text from the API.
         """
         return call_with_retry(
-            lambda: self._call_categorize_api(prompt),
+            lambda: self._call_text_api(prompt),
             max_retries=3,
             base_delay=1.0,
         )
 
-    def _call_categorize_api(self, prompt: str) -> str:
-        """Make the actual API call for categorization."""
+    def generate(self, prompt: str) -> str:
+        """Send a free-form generation prompt and return the raw response text.
+
+        Used for PRD, workflow, and skills generation.
+
+        Args:
+            prompt: The full generation prompt with document content.
+
+        Returns:
+            Raw response text (markdown/JSON) from the API.
+        """
+        return call_with_retry(
+            lambda: self._call_text_api(prompt),
+            max_retries=3,
+            base_delay=1.0,
+        )
+
+    def _call_text_api(self, prompt: str) -> str:
+        """Make the actual free-form text API call."""
         from langchain_deepseek import ChatDeepSeek
 
-        kwargs: Dict[str, Any] = {
-            "model": "deepseek-chat",
-            "temperature": 1.0,  # Deterministic for categorization
+        kwargs: dict[str, Any] = {
+            "model": self.model,
+            "temperature": self.temperature,
             "api_key": self.api_key,
             "max_tokens": 8192,
         }
@@ -147,19 +165,11 @@ class DeepSeekClient:
         response = llm.invoke(prompt)
         return str(response.content).strip()
 
+    # Deprecated aliases (pre-0.4.0 names). Prefer generate()/categorize().
+    def categorize_papers(self, prompt: str) -> str:
+        """Deprecated alias for :meth:`categorize`."""
+        return self.categorize(prompt)
+
     def generate_prd(self, prompt: str) -> str:
-        """Send a PRD generation prompt and return the raw response text.
-
-        Uses temperature=1.0 for creative output.
-
-        Args:
-            prompt: The full PRD generation prompt with paper content.
-
-        Returns:
-            Raw response text (markdown PRD) from the API.
-        """
-        return call_with_retry(
-            lambda: self._call_categorize_api(prompt),
-            max_retries=3,
-            base_delay=1.0,
-        )
+        """Deprecated alias for :meth:`generate`."""
+        return self.generate(prompt)

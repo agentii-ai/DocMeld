@@ -1,12 +1,15 @@
 """PRD generator - create Product Requirements Documents from paper content."""
+
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
 
+from docmeld.gold.provider import LLMProvider
 from docmeld.prd.models import PrdResult
+from docmeld.utils.content import aggregate_content
+from docmeld.utils.silver_io import load_silver_content
+from docmeld.utils.text import strip_code_fences
 
 logger = logging.getLogger("docmeld")
 
@@ -20,14 +23,12 @@ PRD_SECTIONS = [
 ]
 
 
-def generate_prd(
-    silver_jsonl_path: str, client: Any, source_pdf: str = ""
-) -> PrdResult:
+def generate_prd(silver_jsonl_path: str, client: LLMProvider, source_pdf: str = "") -> PrdResult:
     """Generate a PRD markdown file from a silver JSONL file.
 
     Args:
         silver_jsonl_path: Path to the silver JSONL file.
-        client: DeepSeekClient instance.
+        client: An LLMProvider (e.g. DeepSeekClient).
         source_pdf: Original PDF filename for metadata.
 
     Returns:
@@ -49,18 +50,19 @@ def generate_prd(
         )
 
     # Load silver pages
-    pages = _load_silver_content(str(jsonl_path))
+    pages = load_silver_content(str(jsonl_path))
     if not pages:
-        raise ValueError(f"No content found in {silver_jsonl_path}")
+        msg = f"No content found in {silver_jsonl_path}"
+        raise ValueError(msg)
 
     # Aggregate content (truncate for long papers)
-    aggregated = _aggregate_content(pages)
+    aggregated = aggregate_content(pages)
 
     # Generate PRD via API
     prompt = _build_prd_prompt(aggregated, source_pdf)
     logger.info(f"Generating PRD for {source_pdf or jsonl_path.name}...")
 
-    response_text = client.generate_prd(prompt)
+    response_text = client.generate(prompt)
     prd_content = _parse_prd_response(response_text, source_pdf)
 
     # Atomic write — only create file if generation succeeded
@@ -74,40 +76,6 @@ def generate_prd(
         sections=section_count,
         source_pdf=source_pdf,
     )
-
-
-def _load_silver_content(jsonl_path: str) -> List[str]:
-    """Load page content from a silver JSONL file."""
-    pages: List[str] = []
-    with open(jsonl_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                page = json.loads(line)
-                content = page.get("page_content", "")
-                if content.strip():
-                    pages.append(content)
-    return pages
-
-
-def _aggregate_content(pages: List[str], max_chars: int = 30000) -> str:
-    """Aggregate page content, truncating if too long.
-
-    Prioritizes first and last pages (abstract + conclusion) for long papers.
-    """
-    full_content = "\n\n---\n\n".join(pages)
-
-    if len(full_content) <= max_chars:
-        return full_content
-
-    # For long papers: take first 60% and last 40% of budget
-    first_budget = int(max_chars * 0.6)
-    last_budget = max_chars - first_budget
-
-    first_part = full_content[:first_budget]
-    last_part = full_content[-last_budget:]
-
-    return first_part + "\n\n[... content truncated for length ...]\n\n" + last_part
 
 
 def _build_prd_prompt(content: str, source_name: str = "") -> str:
@@ -144,14 +112,11 @@ def _parse_prd_response(response_text: str, source_name: str = "") -> str:
     text = response_text.strip()
 
     # Strip code fences if present
-    if text.startswith("```"):
-        lines = text.split("\n")
-        lines = [line for line in lines if not line.strip().startswith("```")]
-        text = "\n".join(lines).strip()
+    text = strip_code_fences(text)
 
     # Add title header if not present
     if not text.startswith("# "):
-        title = f"# Product Requirements Document"
+        title = "# Product Requirements Document"
         if source_name:
             title += f": {source_name}"
         text = f"{title}\n\n{text}"

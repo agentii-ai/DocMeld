@@ -1,19 +1,24 @@
 """Skills generator - extract Claude Code skills from book content."""
+
 from __future__ import annotations
 
 import json
 import logging
 import re
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
+from docmeld.gold.provider import LLMProvider
 from docmeld.skills.models import SkillsResult
+from docmeld.utils.content import aggregate_content
+from docmeld.utils.silver_io import load_silver_content
+from docmeld.utils.text import strip_code_fences
 
 logger = logging.getLogger("docmeld")
 
 
 def generate_skills(
-    silver_jsonl_path: str, client: Any, source_pdf: str = ""
+    silver_jsonl_path: str, client: LLMProvider, source_pdf: str = ""
 ) -> SkillsResult:
     """Generate Claude Code skill files from a silver JSONL file.
 
@@ -40,22 +45,24 @@ def generate_skills(
         )
 
     # Load silver pages
-    pages = _load_silver_content(str(jsonl_path))
+    pages = load_silver_content(str(jsonl_path))
     if not pages:
-        raise ValueError(f"No content found in {silver_jsonl_path}")
+        msg = f"No content found in {silver_jsonl_path}"
+        raise ValueError(msg)
 
     # Aggregate content (chunked for long books)
-    aggregated = _aggregate_content(pages)
+    aggregated = aggregate_content(pages)
 
     # Generate skills via API
     prompt = _build_skills_prompt(aggregated, source_pdf)
     logger.info(f"Extracting skills from {source_pdf or jsonl_path.name}...")
 
-    response_text = client.generate_prd(prompt)  # Reuses same API method
+    response_text = client.generate(prompt)
     skills = _parse_skills_response(response_text)
 
     if not skills:
-        raise ValueError("No skills could be extracted from the content")
+        msg = "No skills could be extracted from the content"
+        raise ValueError(msg)
 
     # Write skill files atomically
     skills_dir.mkdir(exist_ok=True)
@@ -70,37 +77,6 @@ def generate_skills(
         output_dir=str(skills_dir),
         skill_count=len(skills),
         source_pdf=source_pdf,
-    )
-
-
-def _load_silver_content(jsonl_path: str) -> List[str]:
-    """Load page content from a silver JSONL file."""
-    pages: List[str] = []
-    with open(jsonl_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                page = json.loads(line)
-                content = page.get("page_content", "")
-                if content.strip():
-                    pages.append(content)
-    return pages
-
-
-def _aggregate_content(pages: List[str], max_chars: int = 30000) -> str:
-    """Aggregate page content, truncating if too long."""
-    full_content = "\n\n---\n\n".join(pages)
-
-    if len(full_content) <= max_chars:
-        return full_content
-
-    first_budget = int(max_chars * 0.6)
-    last_budget = max_chars - first_budget
-
-    return (
-        full_content[:first_budget]
-        + "\n\n[... content truncated for length ...]\n\n"
-        + full_content[-last_budget:]
     )
 
 
@@ -130,20 +106,18 @@ def _build_skills_prompt(content: str, source_name: str = "") -> str:
     )
 
 
-def _parse_skills_response(response_text: str) -> List[Dict[str, Any]]:
+def _parse_skills_response(response_text: str) -> list[dict[str, Any]]:
     """Parse the API response into a list of skill dicts."""
     text = response_text.strip()
 
     # Strip code fences
-    if text.startswith("```"):
-        lines = text.split("\n")
-        lines = [line for line in lines if not line.strip().startswith("```")]
-        text = "\n".join(lines).strip()
+    text = strip_code_fences(text)
 
     try:
         data = json.loads(text)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Failed to parse skills response: {e}") from e
+        msg = f"Failed to parse skills response: {e}"
+        raise ValueError(msg) from e
 
     raw_skills = data.get("skills", [])
     result = []
@@ -171,10 +145,12 @@ def _parse_skills_response(response_text: str) -> List[Dict[str, Any]]:
             for ex in examples:
                 lines.append(f"- {ex}")
 
-        result.append({
-            "title": title,
-            "content": "\n".join(lines) + "\n",
-        })
+        result.append(
+            {
+                "title": title,
+                "content": "\n".join(lines) + "\n",
+            }
+        )
 
     return result
 

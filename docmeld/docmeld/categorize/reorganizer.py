@@ -1,4 +1,5 @@
 """Reorganize files into category subdirectories."""
+
 from __future__ import annotations
 
 import json
@@ -7,16 +8,15 @@ import re
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List
 
 from docmeld.bronze.filename_sanitizer import calculate_hash
 
 logger = logging.getLogger("docmeld")
 
 
-def _build_pdf_hash_map(folder: Path) -> Dict[str, Path]:
+def _build_pdf_hash_map(folder: Path) -> dict[str, Path]:
     """Build a mapping from MD5 hash suffix to original PDF path."""
-    result: Dict[str, Path] = {}
+    result: dict[str, Path] = {}
     for pdf in sorted(folder.glob("*.pdf")) + sorted(folder.glob("*.PDF")):
         hash6 = calculate_hash(str(pdf))
         result[hash6] = pdf
@@ -40,7 +40,8 @@ def reorganize_by_category(folder_path: str) -> None:
     index_path = folder / "categories.json"
 
     if not index_path.exists():
-        raise FileNotFoundError(f"categories.json not found in {folder_path}")
+        msg = f"categories.json not found in {folder_path}"
+        raise FileNotFoundError(msg)
 
     with open(index_path, encoding="utf-8") as f:
         index = json.load(f)
@@ -48,7 +49,7 @@ def reorganize_by_category(folder_path: str) -> None:
     # Build hash → PDF mapping for matching originals
     pdf_hash_map = _build_pdf_hash_map(folder)
 
-    moves: List[Dict[str, str]] = []
+    moves: list[dict[str, str]] = []
 
     for paper_entry in index.get("papers", []):
         filename = paper_entry["filename"]

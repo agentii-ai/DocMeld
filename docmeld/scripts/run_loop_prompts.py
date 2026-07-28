@@ -9,19 +9,18 @@ Usage:
 """
 from __future__ import annotations
 
-import json
 import sys
-import time
 from pathlib import Path
 
 # Ensure the docmeld package is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from docmeld.summarize import SUMMARIZE_PROMPT, _call_summarize_api, assemble_paper_content
+
 from docmeld.bronze.filename_sanitizer import get_output_name
 from docmeld.bronze.processor import BronzeProcessor
 from docmeld.gold.deepseek_client import DeepSeekClient, call_with_retry
 from docmeld.silver.processor import SilverProcessor
-from docmeld.summarize import SUMMARIZE_PROMPT, _call_summarize_api, assemble_paper_content
 from docmeld.utils.env_loader import load_env
 from docmeld.utils.logging import setup_logging
 
@@ -96,7 +95,7 @@ def main():
         try:
             bronze_result = bronze.process_file(str(pdf))
             if bronze_result.skipped:
-                print(f"  Bronze: SKIPPED (already exists)")
+                print("  Bronze: SKIPPED (already exists)")
             else:
                 print(f"  Bronze: {bronze_result.element_count} elements, "
                       f"{bronze_result.page_count} pages")
@@ -108,7 +107,7 @@ def main():
         try:
             silver_result = silver.process(bronze_result.output_path)
             if silver_result.skipped:
-                print(f"  Silver: SKIPPED (already exists)")
+                print("  Silver: SKIPPED (already exists)")
             else:
                 print(f"  Silver: {silver_result.page_count} pages")
             print(f"  JSONL: {silver_result.output_path}")
@@ -135,7 +134,7 @@ def main():
         result = generate_summary(client, jsonl_path, pdf.name, summary_path)
         if result.get("ok"):
             if result.get("skipped"):
-                print(f"  Summary: SKIPPED (already exists)")
+                print("  Summary: SKIPPED (already exists)")
             else:
                 print(f"  Summary: DONE ({summary_path.stat().st_size} bytes)")
         else:

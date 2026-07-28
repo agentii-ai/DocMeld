@@ -11,4 +11,4 @@ dist/
 *.log
 
 samples/
-
+.DS_Store

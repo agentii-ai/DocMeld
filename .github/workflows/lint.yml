@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+defaults:
+  run:
+    working-directory: docmeld
+
 jobs:
   lint:
     runs-on: ubuntu-latest
