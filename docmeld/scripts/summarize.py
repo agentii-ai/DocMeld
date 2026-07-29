@@ -3,7 +3,7 @@
 Supports concurrent API calls for faster processing.
 
 Usage:
-    cd /Users/frank/A/DocMeld/docmeld
+    cd docmeld
     source venv/bin/activate
     python scripts/summarize.py "/path/to/folder" --workers 10
 """
@@ -25,40 +25,40 @@ logger = logging.getLogger("docmeld")
 MAX_CONTENT_CHARS = 200000
 DEFAULT_WORKERS = 10
 
-SUMMARIZE_PROMPT = """你是一位资深AI研究员，擅长解读前沿论文并输出结构化中文总结。你对数据工程有极强的敏感度，会格外关注论文中所有与数据相关的细节。
+SUMMARIZE_PROMPT = """You are a senior AI researcher skilled at interpreting cutting-edge papers and producing structured English summaries. You have a strong sensitivity to data engineering and will pay close attention to all data-related details in the paper.
 
-请解读以下论文内容，输出格式清晰的中文总结Markdown文章。
+Please read the following paper content and output a clearly formatted English summary in Markdown.
 
-要求：
-1. 第一行：论文原始文件名
-2. 第二行：研究机构
-3. 第三行：论文中文标题 + 一段话概括（100-200字，涵盖核心贡献、方法、结果）
-4. 正文按以下结构组织（根据论文实际内容灵活调整）：
-   - 一、研究背景与现存问题
-   - 二、模型/方法核心贡献（列出3-5个要点）
-   - 三、核心技术体系（分小节详细展开，每个技术点说清楚原理和作用）
-   - 四、数据体系（★ 重点章节，务必详尽）
-     这是最重要的章节之一，请从论文中尽可能挖掘以下所有维度的信息：
-     （一）训练数据集：列出所有使用的数据集名称、来源、规模（样本数/时长/大小）、数据类型（文本/图像/音频/视频/多模态）、公开还是私有
-     （二）数据采集与清洗：原始数据如何获取（爬取/众包/合成/已有数据集）、清洗过滤规则（质量筛选、去重、长度过滤、分辨率过滤等）、清洗前后数据量对比
-     （三）数据标注与打标方法：人工标注还是自动标注、标注工具/模型（如GPT-4、CLIP、Whisper等）、标注内容（caption/标签/边界框/分割掩码等）、标注质量控制措施
-     （四）数据管道与预处理：数据处理流水线的完整流程、特征提取方法（VAE编码/mel-spectrogram/tokenization等）、数据增强策略、采样策略（课程学习/难度递增/比例混合等）
-     （五）数据规模与配比：各阶段训练数据量、不同数据源的混合比例、预训练vs微调数据的区别
-     （六）评测数据：测试集/验证集的构成、评测基准（benchmark）名称和规模
-     如果论文中某个维度没有提及，明确标注"论文未提及"，不要跳过。
-   - 五、实验验证（实验设置、核心结果、消融实验）
-   - 六、应用场景
-   - 七、局限性与未来工作
-   - 八、整体结论（一段话总结）
+Requirements:
+1. First line: original paper filename
+2. Second line: research institution
+3. Third line: English paper title + one-paragraph summary (100-200 words, covering core contribution, method, results)
+4. Body organized as follows (adjust flexibly based on actual paper content):
+   - 1. Research Background & Existing Problems
+   - 2. Core Contributions of Model/Method (list 3-5 key points)
+   - 3. Technical System Architecture (expand in subsections; explain the principle and role of each technical component)
+   - 4. Data System (★ Key Chapter — be as exhaustive as possible)
+     This is one of the most important chapters. Extract as much of the following dimensions from the paper as possible:
+     (a) Training Datasets: list all dataset names, sources, scale (samples/duration/size), data type (text/image/audio/video/multimodal), public or private
+     (b) Data Collection & Cleaning: how raw data was obtained (crawling/crowdsourcing/synthesis/existing datasets), cleaning and filtering rules (quality filtering, deduplication, length filtering, resolution filtering, etc.), data volume comparison before and after cleaning
+     (c) Data Annotation & Labeling: manual vs. automatic annotation, annotation tools/models (e.g. GPT-4, CLIP, Whisper, etc.), annotation content (captions/labels/bounding boxes/segmentation masks, etc.), annotation quality control measures
+     (d) Data Pipeline & Preprocessing: complete data processing pipeline flow, feature extraction methods (VAE encoding/mel-spectrogram/tokenization, etc.), data augmentation strategies, sampling strategies (curriculum learning/progressive difficulty/ratio mixing, etc.)
+     (e) Data Scale & Ratios: training data volume at each stage, mixing ratios of different data sources, differences between pre-training vs. fine-tuning data
+     (f) Evaluation Data: composition of test/validation sets, benchmark names and scales
+     If a dimension is not mentioned in the paper, explicitly note "Not mentioned in the paper" — do not skip.
+   - 5. Experimental Validation (experimental setup, key results, ablation studies)
+   - 6. Application Scenarios
+   - 7. Limitations & Future Work
+   - 8. Overall Conclusion (one-paragraph summary)
 
-格式要求：
-- 使用中文，技术术语保留英文原文并用括号标注
-- 用Markdown格式，标题用中文数字（一、二、三...），小节用（一）（二）...
-- 关键数字、指标、模型名称要准确引用
-- 数据相关的数字务必精确：样本数量、数据集大小、训练时长、batch size等都要原文引用
-- 不要输出```markdown代码块标记，直接输出Markdown内容
+Formatting requirements:
+- Use English; retain technical terms in their original language with English explanation
+- Use Markdown format; headings use Arabic numerals (1, 2, 3...), subsections use (a), (b)...
+- Key numbers, metrics, and model names must be accurately cited
+- Data-related numbers must be precise: sample counts, dataset sizes, training duration, batch size, etc. must be cited verbatim from the original text
+- Do NOT output ```markdown code block markers; output Markdown content directly
 
-论文内容：
+Paper content:
 """
 
 

@@ -146,7 +146,7 @@ def _parse_categories_only(response_text: str) -> list[dict[str, Any]]:
         data = _repair_truncated_json(text)
         if data is None:
             msg = "Failed to parse or repair categorization response"
-            raise ValueError(msg)
+            raise ValueError(msg) from None
 
     if "categories" not in data:
         msg = "Missing 'categories' key in categorization response"

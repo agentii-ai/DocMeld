@@ -47,11 +47,9 @@ class DoclingBackend:
 
         # Assign page numbers based on page break positions
         current_page = 1
-        body_item_index = 0
 
-        for item, _level in doc.iterate_items():
+        for body_item_index, (item, _level) in enumerate(doc.iterate_items(), start=1):
             item_type = type(item).__name__
-            body_item_index += 1
 
             # Check if we've crossed a page break
             if page_breaks and body_item_index in page_breaks:
@@ -174,9 +172,7 @@ class DoclingBackend:
             from docx.oxml.ns import qn
 
             docx = DocxDocument(doc_path)
-            para_idx = 0
-            for para in docx.paragraphs:
-                para_idx += 1
+            for para_idx, para in enumerate(docx.paragraphs, start=1):
                 # Check for explicit page break before paragraph
                 for run in para.runs:
                     br_elems = run._r.findall(qn("w:br"))
@@ -184,7 +180,7 @@ class DoclingBackend:
                         if br.get(qn("w:type")) == "page":
                             breaks.add(para_idx)
                     # Also check lastRenderedPageBreak
-                    for br in run._r.findall(qn("w:lastRenderedPageBreak")):
+                    for _br in run._r.findall(qn("w:lastRenderedPageBreak")):
                         breaks.add(para_idx)
         except Exception:
             pass
@@ -258,7 +254,7 @@ class DoclingBackend:
         }
 
     @staticmethod
-    def _extract_picture(item: Any, output_dir: str, page_no: int) -> dict[str, Any] | None:
+    def _extract_picture(item: Any, _output_dir: str, page_no: int) -> dict[str, Any] | None:
         """Extract image data from a Docling PictureItem."""
         image = getattr(item, "image", None)
         if not image:

@@ -26,10 +26,10 @@ def generate_article_md(silver_path: Path) -> Path | None:
     """
     pages: list[dict[str, Any]] = []
     with open(silver_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                pages.append(json.loads(line))
+        for raw_line in f:
+            stripped = raw_line.strip()
+            if stripped:
+                pages.append(json.loads(stripped))
 
     if not pages:
         return None
@@ -82,10 +82,10 @@ def _parse_silver_file(silver_path: Path) -> PaperMetadata | None:
     """Parse a silver JSONL file into PaperMetadata with truncated content."""
     pages: list[dict[str, Any]] = []
     with open(silver_path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                pages.append(json.loads(line))
+        for raw_line in f:
+            stripped = raw_line.strip()
+            if stripped:
+                pages.append(json.loads(stripped))
 
     if not pages:
         return None

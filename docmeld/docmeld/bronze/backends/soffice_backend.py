@@ -21,7 +21,7 @@ class SofficeBackend:
     title, image).
     """
 
-    SUPPORTED_SUFFIXES = {".doc", ".ppt"}
+    SUPPORTED_SUFFIXES: frozenset[str] = frozenset({".doc", ".ppt"})
 
     def extract_elements(self, doc_path: str, output_dir: str) -> list[dict[str, Any]]:
         """Convert a legacy binary document to PDF and extract elements via PyMuPDF.
@@ -64,13 +64,14 @@ class SofficeBackend:
                     capture_output=True,
                     text=True,
                     timeout=120,
+                    check=False,
                 )
                 if result.returncode != 0:
                     msg = f"LibreOffice conversion failed: {result.stderr.strip()}"
-                    raise RuntimeError(msg)
-            except subprocess.TimeoutExpired:
+                    raise RuntimeError(msg) from None
+            except subprocess.TimeoutExpired as err:
                 msg = "LibreOffice conversion timed out after 120s"
-                raise RuntimeError(msg)
+                raise RuntimeError(msg) from err
 
             # Find the generated PDF
             pdf_files = list(Path(tmpdir).glob("*.pdf"))
@@ -106,11 +107,12 @@ class SofficeBackend:
                     capture_output=True,
                     text=True,
                     timeout=120,
+                    check=False,
                 )
                 pdf_files2 = list(Path(tmpdir).glob("*.pdf"))
                 if not pdf_files2:
                     msg = "LibreOffice retry also produced no PDF output"
-                    raise RuntimeError(msg)
+                    raise RuntimeError(msg) from None
                 elements = pymupdf.extract_elements(str(pdf_files2[0]), output_dir)
 
             logger.info(

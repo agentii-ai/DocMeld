@@ -4,8 +4,8 @@ Generates .json, .jsonl, and _summary.md for each PDF.
 Skips gold layer per-page metadata enrichment (no description/keywords in JSONL).
 
 Usage:
-    cd /Users/frank/A/DocMeld/docmeld && source venv/bin/activate
-    python run_loop_prompts.py
+    cd docmeld && source venv/bin/activate
+    python scripts/run_loop_prompts.py [target_folder]
 """
 from __future__ import annotations
 
@@ -24,8 +24,8 @@ from docmeld.silver.processor import SilverProcessor
 from docmeld.utils.env_loader import load_env
 from docmeld.utils.logging import setup_logging
 
-TARGET_FOLDER = Path("/Users/frank/D/SynthRoute/refs/loop_prompts")
-ENV_PATH = "/Users/frank/A/DocMeld/.env.local"
+TARGET_FOLDER = Path(sys.argv[1]) if len(sys.argv) > 1 else Path.cwd()
+ENV_PATH = str(Path(__file__).resolve().parents[2] / ".env.local")
 
 
 def generate_summary(client: DeepSeekClient, jsonl_path: Path, pdf_name: str,
