@@ -3,7 +3,7 @@
 **Feature Branch**: `008-optimization-launch`
 **Created**: 2026-07-28
 **Status**: In Progress
-**Input**: User request — "docmeld 是一个优秀的开源项目，用最高的开源项目标准评估整个代码库；优化 README.md。" Expanded during planning to **full remediation** (docs + repo structure + code) plus optimizing **both** README files.
+**Input**: User request — "DocMeld is an excellent open source project — evaluate the entire codebase against the highest open source standards; optimize README.md." (Translated from original Chinese.) Expanded during planning to **full remediation** (docs + repo structure + code) plus optimizing **both** README files.
 
 ## Context
 
@@ -57,7 +57,7 @@ Each finding below was confirmed by reading the code/config directly, not merely
   `batch_pipeline.py`, `fix_summaries.py`, `run_loop_prompts.py` lived inside the importable
   package (`docmeld/docmeld/`) and were published to PyPI. They contain hardcoded personal paths
   and Chinese research-paper prompts. A stray `summarize_rl.py` at the repo root used a
-  `sys.path.insert` hack and a hardcoded `/Users/frank/Documents/...` path.
+  `sys.path.insert` hack and a hardcoded personal path (now fixed via CLI argument).
 - **HF-2 LLM provider hardcoded to DeepSeek.** No provider Protocol; `DeepSeekClient` instantiated
   directly in 5 places; `client: Any` in every generator signature; `env_loader` only understands
   `DEEPSEEK_*`. This is the #1 generality blocker for an OSS pipeline.

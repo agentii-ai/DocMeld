@@ -8,7 +8,7 @@ Orchestrates the complete workflow for a folder of PDFs:
 5. Reorganize into category subdirectories
 
 Usage:
-    cd /Users/frank/A/DocMeld/docmeld
+    cd docmeld
     source venv/bin/activate
     python scripts/batch_pipeline.py "/path/to/folder" --workers 10
 """

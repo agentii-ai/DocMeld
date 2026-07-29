@@ -5,7 +5,7 @@ Walks a folder of already-processed papers (each PDF has a sibling
 content, and writes ``<pdf_stem>_summary.md`` next to each PDF via DeepSeek-chat.
 
 Usage:
-    cd /Users/frank/A/DocMeld/docmeld
+    cd docmeld
     source venv/bin/activate
     python scripts/summarize_rl.py "/path/to/papers" --workers 5
 """
@@ -25,31 +25,31 @@ from docmeld.utils.env_loader import load_env
 MAX_CONTENT_CHARS = 200000
 DEFAULT_WORKERS = 5
 
-SUMMARIZE_PROMPT = """你是一位资深AI研究员，擅长解读前沿论文并输出结构化中文总结。你对数据工程有极强的敏感度，会格外关注论文中所有与数据相关的细节。
+SUMMARIZE_PROMPT = """You are a senior AI researcher skilled at interpreting cutting-edge papers and producing structured English summaries. You have a strong sensitivity to data engineering and will pay close attention to all data-related details in the paper.
 
-请解读以下论文内容，输出格式清晰的中文总结Markdown文章。
+Please read the following paper content and output a clearly formatted English summary in Markdown.
 
-要求：
-1. 第一行：论文原始文件名
-2. 第二行：研究机构
-3. 第三行：论文中文标题 + 一段话概括（100-200字，涵盖核心贡献、方法、结果）
-4. 正文按以下结构组织（根据论文实际内容灵活调整）：
-   - 一、研究背景与现存问题
-   - 二、模型/方法核心贡献（列出3-5个要点）
-   - 三、核心技术体系（分小节详细展开，每个技术点说清楚原理和作用）
-   - 四、数据体系（★ 重点章节，务必详尽）
-   - 五、实验验证（实验设置、核心结果、消融实验）
-   - 六、应用场景
-   - 七、局限性与未来工作
-   - 八、整体结论（一段话总结）
+Requirements:
+1. First line: original paper filename
+2. Second line: research institution
+3. Third line: English paper title + one-paragraph summary (100-200 words, covering core contribution, method, results)
+4. Body organized as follows (adjust flexibly based on actual paper content):
+   - 1. Research Background & Existing Problems
+   - 2. Core Contributions of Model/Method (list 3-5 key points)
+   - 3. Technical System Architecture (expand in subsections; explain the principle and role of each technical component)
+   - 4. Data System (★ Key Chapter — be as exhaustive as possible)
+   - 5. Experimental Validation (experimental setup, key results, ablation studies)
+   - 6. Application Scenarios
+   - 7. Limitations & Future Work
+   - 8. Overall Conclusion (one-paragraph summary)
 
-格式要求：
-- 使用中文，技术术语保留英文原文并用括号标注
-- 用Markdown格式，标题用中文数字（一、二、三...），小节用（一）（二）...
-- 关键数字、指标、模型名称要准确引用
-- 不要输出```markdown代码块标记，直接输出Markdown内容
+Formatting requirements:
+- Use English; retain technical terms in their original language with English explanation
+- Use Markdown format; headings use Arabic numerals (1, 2, 3...), subsections use (a), (b)...
+- Key numbers, metrics, and model names must be accurately cited
+- Do NOT output ```markdown code block markers; output Markdown content directly
 
-论文内容：
+Paper content:
 """
 
 def assemble_content(jsonl_path: Path) -> str:

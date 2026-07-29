@@ -18,7 +18,7 @@ Status legend: `[PENDING]` | `[IN PROGRESS]` | `[DONE]` | `[BLOCKED]`
 - New: generate a category index (e.g., `categories.json`) mapping each paper to its assigned category
 - New: optionally reorganize files — move each PDF and its output folder into a category subfolder
 
-**Test input**: `/Users/frank/Documents/AI/4.4 Txt2Video/audio`
+**Test input**: `~/Documents/research-papers/sample-folder`
 
 **Acceptance criteria**:
 - All PDFs in folder are processed through full pipeline
@@ -46,7 +46,7 @@ Status legend: `[PENDING]` | `[IN PROGRESS]` | `[DONE]` | `[BLOCKED]`
   - Success metrics (from paper's evaluation section)
 - Output as a new `_prd.md` file alongside the gold JSONL
 
-**Test input**: `/Users/frank/Documents/AI/4.4 Txt2Video/Seedance/2603.04379 Helios- Real Real-Time Long Video Generation Model.pdf`
+**Test input**: `~/Documents/research-papers/sample-paper.pdf`
 
 **Acceptance criteria**:
 - PRD is generated as markdown with all required sections

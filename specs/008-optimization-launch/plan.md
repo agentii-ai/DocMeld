@@ -46,7 +46,7 @@ declarative and exempt from TDD.
 ## Repository layout (context)
 
 ```
-/Users/frank/A/DocMeld/            ← git root
+<repo-root>/                       ← git root
 ├── .github/workflows/             ← MUST live here (was under docmeld/)
 ├── .pre-commit-config.yaml
 ├── README.md                      ← root README (optimize)
@@ -266,7 +266,7 @@ commands + 4 `process_*` methods present.
 - **Docs**: `docmeld/README.md`, root `README.md`, `docmeld/CHANGELOG.md`, `docmeld/CONTRIBUTING.md`
 - **Scripts (done)**: relocated to `docmeld/scripts/` with sibling imports + de-hardcoded `summarize_rl.py`
 
-## Global verification (from `/Users/frank/A/DocMeld/docmeld`, `source venv/bin/activate`)
+## Global verification (from `docmeld/`, `source venv/bin/activate`)
 
 1. `pytest tests/ -q` → ≥309 passed, 5 skipped, after every phase.
 2. `pytest -m unit -q` / `-m integration` select tests (Phase E marker fix).

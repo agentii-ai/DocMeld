@@ -60,10 +60,8 @@ def jsonl_to_markdown(jsonl_path: Path) -> Path:
 def main():
     root_dirs = sys.argv[1:] if len(sys.argv) > 1 else []
     if not root_dirs:
-        root_dirs = [
-            "/Users/frank/JMM/references/strategies",
-            "/Users/frank/JMM/references/cases",
-        ]
+        print("Usage: python scripts/batch_bronze_silver.py /path/to/pdf/dir1 [/path/to/dir2 ...]")
+        sys.exit(1)
 
     print("Scanning directories...")
     all_pdfs = find_pdfs(root_dirs)

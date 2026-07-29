@@ -1,7 +1,7 @@
 """Move root-level summaries into category folders, then re-summarize failed papers.
 
 Usage:
-    cd /Users/frank/A/DocMeld/docmeld
+    cd docmeld
     source venv/bin/activate
     python scripts/fix_summaries.py "/path/to/folder" --workers 5
 """
