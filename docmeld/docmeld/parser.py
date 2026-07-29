@@ -45,7 +45,7 @@ class DocMeldParser:
     def __init__(
         self,
         path: str,
-        output_dir: str | None = None,
+        _output_dir: str | None = None,
         backend: str = "pymupdf",
         provider: LLMProvider | None = None,
     ) -> None:
